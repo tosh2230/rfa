@@ -2,9 +2,13 @@
 package main
 
 import (
+	"fmt"
 	"rfa/vision_api"
 )
 
 func main() {
-	vision_api.Detect()
+	results := vision_api.Detect("img/IMG_0710.PNG")
+	for _, result := range results {
+		fmt.Println(result)
+	}
 }
