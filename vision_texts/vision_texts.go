@@ -1,4 +1,4 @@
-package vision_api
+package vision_texts
 
 import (
 	"context"
