@@ -18,12 +18,19 @@ type ConfigList struct {
 	accessTokenSecret string
 }
 
+type Result struct {
+	ScreenName    string
+	CreatedAt     string
+	MediaUrlHttps string
+}
+
 var Config ConfigList
 var Section string = "DEFAULT"
+var IniFile string = ".twitter/config.ini"
 
 func init() {
 	home := os.Getenv("HOME")
-	ini_path := fmt.Sprintf("%s/.twitter/config.ini", home)
+	ini_path := fmt.Sprintf("%s/%s", home, IniFile)
 	cfg, err := ini.Load(ini_path)
 	if err != nil {
 		log.Fatalf("Failed to load config.ini: %v", err)
@@ -37,8 +44,8 @@ func init() {
 	}
 }
 
-func Search(user string, count int) []string {
-	var results []string
+func Search(user *string, count int) []Result {
+	var results []Result
 	anaconda.SetConsumerKey(Config.consumerKey)
 	anaconda.SetConsumerSecret(Config.consumerSecret)
 	api := anaconda.NewTwitterApi(Config.accessToken, Config.accessTokenSecret)
@@ -47,13 +54,18 @@ func Search(user string, count int) []string {
 	v.Set("count", strconv.Itoa(count))
 
 	var from string = ""
-	if len(user) != 0 {
-		from = fmt.Sprintf("from:%s ", user)
+	if len(*user) != 0 {
+		from = fmt.Sprintf("from:%s ", *user)
 	}
-	keyword := fmt.Sprintf("%s#リングフィットアドベンチャー -filter:retweets filter:twimg", from)
+	keyword := fmt.Sprintf("%s#RingFitAdventure -filter:retweets filter:twimg", from)
 	searchResult, _ := api.GetSearch(keyword, v)
 	for _, tweet := range searchResult.Statuses {
-		results = append(results, tweet.Entities.Media[0].Media_url_https)
+		result := Result{
+			ScreenName:    tweet.User.ScreenName,
+			CreatedAt:     tweet.CreatedAt,
+			MediaUrlHttps: tweet.Entities.Media[0].Media_url_https,
+		}
+		results = append(results, result)
 	}
 
 	return results
