@@ -1,4 +1,4 @@
-package bigquery
+package bq
 
 import (
 	"context"
@@ -8,11 +8,7 @@ import (
 	"cloud.google.com/go/bigquery"
 )
 
-// importCSVFromFile demonstrates loading data into a BigQuery table using a file on the local filesystem.
-func importCSVFromFile(projectID, datasetID, tableID, filename string) error {
-	// projectID := "my-project-id"
-	// datasetID := "mydataset"
-	// tableID := "mytable"
+func ImportCSVFromFile(projectID, datasetID, tableID, filename string) error {
 	ctx := context.Background()
 	client, err := bigquery.NewClient(ctx, projectID)
 	if err != nil {
