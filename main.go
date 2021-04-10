@@ -1,4 +1,3 @@
-// Sample vision-quickstart uses the Google Cloud Vision API to label an image.
 package main
 
 import (
@@ -35,7 +34,10 @@ func main() {
 				!strings.HasPrefix(texts[0], "Today's Results") {
 				os.Exit(0)
 			}
-			fmt.Println(texts[0])
+
+			for _, line := range strings.Split(texts[0], "\n") {
+				fmt.Println(strings.TrimSpace(strings.Trim(line, "*")))
+			}
 		}
 	}
 }
