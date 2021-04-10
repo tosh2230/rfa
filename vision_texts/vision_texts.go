@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	vision "cloud.google.com/go/vision/apiv1"
 )
 
-func Detect(filename string) []string {
-	var results []string
+func Detect(filename string) string {
+	var result string
 	ctx := context.Background()
 
 	// Creates a client.
@@ -38,10 +39,16 @@ func Detect(filename string) []string {
 
 	if len(annotations) == 0 {
 		fmt.Println("No text found.")
-	} else {
-		for _, annotation := range annotations {
-			results = append(results, annotation.Description)
-		}
+		os.Exit(0)
 	}
-	return results
+
+	result = annotations[0].Description
+
+	if !strings.HasPrefix(result, "本日の運動結果") &&
+		!strings.HasPrefix(result, "Today's Results") {
+		fmt.Println("No images found.")
+		os.Exit(0)
+	}
+
+	return result
 }

@@ -58,10 +58,9 @@ func Search(user *string, count int) []Rslt {
 	anaconda.SetConsumerSecret(Cfg.consumerSecret)
 	api := anaconda.NewTwitterApi(Cfg.accessToken, Cfg.accessTokenSecret)
 
+	keyword := fmt.Sprintf("from:%s #%s filter:%s -filter:%s", *user, hashTag, filterIn, filterEx)
 	v := url.Values{}
 	v.Set("count", strconv.Itoa(count))
-
-	keyword := fmt.Sprintf("from:%s #%s filter:%s -filter:%s", *user, hashTag, filterIn, filterEx)
 
 	searchResult, _ := api.GetSearch(keyword, v)
 	for _, tweet := range searchResult.Statuses {
@@ -88,8 +87,8 @@ func GetImage(url string) *os.File {
 	defer response.Body.Close()
 
 	urlSliced := strings.Split(url, "/")
-	filename := fmt.Sprintf(urlSliced[len(urlSliced)-1])
-	file, _ := ioutil.TempFile("", filename)
+	fileName := fmt.Sprintf(urlSliced[len(urlSliced)-1])
+	file, _ := ioutil.TempFile("", fileName)
 	io.Copy(file, response.Body)
 
 	return file

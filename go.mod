@@ -13,6 +13,8 @@ require (
 	github.com/dustin/go-jsonpointer v0.0.0-20160814072949-ba0abeacc3dc // indirect
 	github.com/dustin/gojson v0.0.0-20160307161227-2e71ec9dd5ad // indirect
 	github.com/garyburd/go-oauth v0.0.0-20180319155456-bca2e7f09a17 // indirect
+	github.com/gocarina/gocsv v0.0.0-20210408192840-02d7211d929d
 	google.golang.org/api v0.42.0
+	google.golang.org/genproto v0.0.0-20210323160006-e668133fea6a
 	gopkg.in/ini.v1 v1.62.0
 )

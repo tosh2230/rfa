@@ -9,6 +9,9 @@ import (
 	"rfa/vision_texts"
 	"strconv"
 	"strings"
+	"time"
+
+	"github.com/gocarina/gocsv"
 )
 
 type Summary struct {
@@ -20,11 +23,11 @@ type Summary struct {
 }
 
 type Details struct {
-	TwitterId     string `json:"twitter_id" csv:"twitter_id"`
-	ExerciseName  string `json:"exercise_name" csv:"exercise_name"`
-	Quantity      int    `json:"quantity" csv:"quantity"`
-	TotalQuantity int    `json:"total_quantity" csv:"total_quantity"`
-	CreatedAt     string `json:"created_at" csv:"created_at"`
+	TwitterId     string    `json:"twitter_id" csv:"twitter_id"`
+	ExerciseName  string    `json:"exercise_name" csv:"exercise_name"`
+	Quantity      int       `json:"quantity" csv:"quantity"`
+	TotalQuantity int       `json:"total_quantity" csv:"total_quantity"`
+	CreatedAt     time.Time `json:"created_at" csv:"created_at"`
 }
 
 func main() {
@@ -41,37 +44,31 @@ func main() {
 
 		urls := rslt.MediaUrlHttps
 		for _, url := range urls {
+			fmt.Println(url)
 			file := twitter.GetImage(url)
 			defer os.Remove(file.Name())
 
-			texts := vision_texts.Detect(file.Name())
-
-			fmt.Println(url)
-			if !strings.HasPrefix(texts[0], "本日の運動結果") &&
-				!strings.HasPrefix(texts[0], "Today's Results") {
-				fmt.Println("No images found.")
-				os.Exit(0)
-			}
-
-			createCSV(texts)
+			createdAt, _ := time.Parse("Mon Jan 2 15:04:05 -0700 2006", rslt.CreatedAt)
+			text := vision_texts.Detect(file.Name())
+			createCsv(*user, createdAt, text)
 		}
 	}
 }
 
-func createCSV(texts []string) {
-	lines := strings.Split(texts[0], "\n")
+func createCsv(user string, createdAt time.Time, text string) {
+	lines := replaceLines(strings.Split(text, "\n"))
 	lastWords := lines[len(lines)-2]
 
 	switch {
 	// summary
 	case strings.HasPrefix(lastWords, "次へ"), strings.HasPrefix(lastWords, "Next"):
 		fmt.Println("Summary:")
-		createCsvSummary(lines)
+		createCsvSummary(user, createdAt, lines)
 
 	// details
 	case strings.HasPrefix(lastWords, "とじる"), strings.HasPrefix(lastWords, "Close"):
 		fmt.Println("Details:")
-		createCsvDetails(lines)
+		createCsvDetails(user, createdAt, lines)
 
 	default:
 		fmt.Println("No images found.")
@@ -79,27 +76,49 @@ func createCSV(texts []string) {
 	}
 }
 
-func createCsvSummary(lines []string) {
+func replaceLines(lines []string) []string {
+	var rlines []string
 	for _, line := range lines {
-		fmt.Println(replaceLine(line))
+		rline := strings.TrimSpace(strings.Trim(line, "*"))
+		rline = strings.Replace(rline, "Om(", "0m(", 1)
+		rlines = append(rlines, rline)
+	}
+	return rlines
+}
+
+func createCsvSummary(user string, createdAt time.Time, lines []string) {
+	for _, line := range lines {
+		fmt.Println(line)
 	}
 }
 
-func createCsvDetails(lines []string) {
-	var isOdd bool = (len(lines)%2 == 0)
+func createCsvDetails(user string, createdAt time.Time, lines []string) {
+	var isEven bool = (len(lines)%2 == 0)
+	details := []*Details{}
 
 	for i, line := range lines {
-		r := regexp.MustCompile(`[0-9].+`)
-		if isOdd && r.MatchString(lines[i]) && r.MatchString(lines[i+1]) {
+		// fmt.Println(line)
+		rExercise := regexp.MustCompile(`^[^0-9]+`)
+		rQuantity := regexp.MustCompile(`^[0-9]+`)
+		rTotalQuantity := regexp.MustCompile(`\([0-9]+`)
+
+		if i > 2 && !isEven &&
+			rExercise.MatchString(line) &&
+			rExercise.MatchString(lines[i+1]) {
 			break
-		} else {
-			fmt.Println(replaceLine(line))
+		} else if i > 2 && rExercise.MatchString(line) {
+			quantity, _ := strconv.Atoi(rQuantity.FindAllString(lines[i+1], 1)[0])
+			strTotalQuantity := rTotalQuantity.FindAllString(lines[i+1], 1)
+			totalQuantity, _ := strconv.Atoi(strings.Trim(strTotalQuantity[0], "("))
+			details = append(details, &Details{
+				TwitterId:     user,
+				ExerciseName:  line,
+				Quantity:      quantity,
+				TotalQuantity: totalQuantity,
+				CreatedAt:     createdAt,
+			})
 		}
 	}
-}
-
-func replaceLine(line string) string {
-	rline := strings.TrimSpace(strings.Trim(line, "*"))
-	rline = strings.Replace(rline, "Om(", "0m(", 1)
-	return rline
+	csvStr, _ := gocsv.MarshalString(&details)
+	fmt.Println(csvStr)
 }
