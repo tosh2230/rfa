@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"cloud.google.com/go/bigquery"
 	"google.golang.org/api/iterator"
@@ -14,8 +15,12 @@ import (
 
 const datasetID string = "rfa"
 
+type latest struct {
+	MaxCreatedAt time.Time
+}
+
 func LoadCsv(projectID string, filename string) error {
-	var tableID string = strings.Trim(filepath.Base(filename), filepath.Ext(filename))
+	var tableID string = strings.ReplaceAll(filepath.Base(filename), filepath.Ext(filename), "")
 
 	ctx := context.Background()
 	client, err := bigquery.NewClient(ctx, projectID)
@@ -48,11 +53,12 @@ func LoadCsv(projectID string, filename string) error {
 	return nil
 }
 
-func Query(projectID string, location string, w io.Writer) error {
+func Query(projectID string, location string, w io.Writer) ([]latest, error) {
+	var results []latest
 	ctx := context.Background()
 	client, err := bigquery.NewClient(ctx, projectID)
 	if err != nil {
-		return fmt.Errorf("bigquery.NewClient: %v", err)
+		return results, fmt.Errorf("bigquery.NewClient: %v", err)
 	}
 	defer client.Close()
 
@@ -63,14 +69,14 @@ func Query(projectID string, location string, w io.Writer) error {
 	q.Location = "US"
 	job, err := q.Run(ctx)
 	if err != nil {
-		return err
+		return results, err
 	}
 	status, err := job.Wait(ctx)
 	if err != nil {
-		return err
+		return results, err
 	}
 	if err := status.Err(); err != nil {
-		return err
+		return results, err
 	}
 	it, _ := job.Read(ctx)
 	for {
@@ -80,9 +86,9 @@ func Query(projectID string, location string, w io.Writer) error {
 			break
 		}
 		if err != nil {
-			return err
+			return results, err
 		}
-		fmt.Fprintln(w, row)
+		results = append(results, &row)
 	}
-	return nil
+	return results, nil
 }

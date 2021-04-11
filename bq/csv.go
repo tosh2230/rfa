@@ -11,11 +11,11 @@ import (
 )
 
 type Summary struct {
-	TwitterId            string    `json:"twitter_id" csv:"twitter_id"`
-	TotalTimeExcercising string    `json:"total_time_excercising" csv:"total_time_excercising"`
-	TotalCaloriesBurned  float64   `json:"total_calories_burned" csv:"total_calories_burned"`
-	TotalDistanceRun     float64   `json:"total_distance_run" csv:"total_distance_run"`
-	CreatedAt            time.Time `json:"created_at" csv:"created_at"`
+	TwitterId            string        `json:"twitter_id" csv:"twitter_id"`
+	TotalTimeExcercising time.Duration `json:"total_time_excercising" csv:"total_time_excercising"`
+	TotalCaloriesBurned  float64       `json:"total_calories_burned" csv:"total_calories_burned"`
+	TotalDistanceRun     float64       `json:"total_distance_run" csv:"total_distance_run"`
+	CreatedAt            time.Time     `json:"created_at" csv:"created_at"`
 }
 
 type Details struct {
@@ -58,12 +58,43 @@ func replaceLines(lines []string) []string {
 }
 
 func createCsvSummary(twitterId string, createdAt time.Time, lines []string) string {
-	// var csvName string = "./csv/summary.csv"
-	var csvName string = ""
-	// for _, line := range lines {
-	// 	fmt.Println(line)
-	// }
+	var csvName string = "./csv/summary.csv"
+	summary := setSummary(twitterId, createdAt, lines)
+
+	_ = os.Remove(csvName)
+	csvfile, _ := os.OpenFile(csvName, os.O_RDWR|os.O_CREATE, os.ModePerm)
+	defer csvfile.Close()
+
+	gocsv.MarshalFile(&summary, csvfile)
 	return csvName
+}
+
+func setSummary(twitterId string, createdAt time.Time, lines []string) []*Summary {
+	var summary []*Summary
+	rQuantity := regexp.MustCompile(`^[0-9.]+`)
+
+	for i, line := range lines {
+
+		if rQuantity.MatchString(line) {
+			strTotalTime := strings.ReplaceAll(line, "時", "h")
+			strTotalTime = strings.ReplaceAll(strTotalTime, "分", "m")
+			strTotalTime = strings.ReplaceAll(strTotalTime, "秒", "s")
+			totalTimeExcercising, _ := time.ParseDuration(strTotalTime)
+			strTotalCalories := rQuantity.FindAllString(lines[i+2], 1)[0]
+			totalCaloriesBurned, _ := strconv.ParseFloat(strTotalCalories, 64)
+			totalDistanceRun, _ := strconv.ParseFloat(rQuantity.FindAllString(lines[i+4], 1)[0], 64)
+
+			summary = append(summary, &Summary{
+				TwitterId:            twitterId,
+				TotalTimeExcercising: totalTimeExcercising,
+				TotalCaloriesBurned:  totalCaloriesBurned,
+				TotalDistanceRun:     totalDistanceRun,
+				CreatedAt:            createdAt,
+			})
+			break
+		}
+	}
+	return summary
 }
 
 func createCsvDetails(twitterId string, createdAt time.Time, lines []string) string {
