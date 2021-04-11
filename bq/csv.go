@@ -1,7 +1,6 @@
 package bq
 
 import (
-	"fmt"
 	"os"
 	"regexp"
 	"strconv"
@@ -37,12 +36,10 @@ func CreateCsv(twitterId string, createdAtStr string, text string) string {
 	switch {
 	// summary
 	case strings.HasPrefix(lastWords, "次へ"), strings.HasPrefix(lastWords, "Next"):
-		fmt.Println("Summary:")
 		csvName = createCsvSummary(twitterId, createdAt, lines)
 
 	// details
 	case strings.HasPrefix(lastWords, "とじる"), strings.HasPrefix(lastWords, "Close"):
-		fmt.Println("Details:")
 		csvName = createCsvDetails(twitterId, createdAt, lines)
 	}
 
@@ -54,39 +51,49 @@ func replaceLines(lines []string) []string {
 	for _, line := range lines {
 		rLine := strings.TrimSpace(strings.Trim(line, "*"))
 		rLine = strings.Replace(rLine, "Om(", "0m(", 1)
+		rLine = strings.Replace(rLine, "0(", "回(", 1)
 		rLines = append(rLines, rLine)
 	}
 	return rLines
 }
 
 func createCsvSummary(twitterId string, createdAt time.Time, lines []string) string {
-	var csvName string = "./csv/summary.csv"
-	for _, line := range lines {
-		fmt.Println(line)
-	}
+	// var csvName string = "./csv/summary.csv"
+	var csvName string = ""
+	// for _, line := range lines {
+	// 	fmt.Println(line)
+	// }
 	return csvName
 }
 
 func createCsvDetails(twitterId string, createdAt time.Time, lines []string) string {
 	var csvName string = "./csv/details.csv"
 	var isEven bool = (len(lines)%2 == 0)
+	var isExercise bool = false
 	details := []*Details{}
 
 	for i, line := range lines {
 		rExercise := regexp.MustCompile(`^[^0-9]+`)
 
-		if i > 2 && !isEven &&
+		if isExercise && !isEven &&
 			rExercise.MatchString(line) &&
 			rExercise.MatchString(lines[i+1]) {
 			details = setDetails(details, twitterId, createdAt, line, lines[i+4])
 			details = setDetails(details, twitterId, createdAt, lines[i+1], lines[i+3])
 			details = setDetails(details, twitterId, createdAt, lines[i+2], lines[i+5])
 			break
-		} else if i > 2 && rExercise.MatchString(line) {
+		} else if strings.HasPrefix(line, "カッコ内はプレイ開始からの累計値です") {
+			break
+		} else if isExercise && rExercise.MatchString(line) {
 			details = setDetails(details, twitterId, createdAt, line, lines[i+1])
+		}
+
+		if strings.HasPrefix(line, "R 画面を撮影する") {
+			isExercise = true
 		}
 	}
 
+	_ = os.Remove(csvName)
 	csvfile, _ := os.OpenFile(csvName, os.O_RDWR|os.O_CREATE, os.ModePerm)
 	defer csvfile.Close()
 

@@ -65,7 +65,7 @@ func Search(user *string, count int) []Rslt {
 	searchResult, _ := api.GetSearch(keyword, v)
 	for _, tweet := range searchResult.Statuses {
 		var urls []string
-		for _, medium := range tweet.Entities.Media {
+		for _, medium := range tweet.ExtendedEntities.Media {
 			urls = append(urls, medium.Media_url_https)
 		}
 		rslt := Rslt{

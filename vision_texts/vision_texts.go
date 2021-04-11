@@ -11,10 +11,8 @@ import (
 )
 
 func Detect(filename string) string {
-	var result string
-	ctx := context.Background()
-
 	// Creates a client.
+	ctx := context.Background()
 	client, err := vision.NewImageAnnotatorClient(ctx)
 	if err != nil {
 		log.Fatalf("Failed to create client: %v", err)
@@ -42,13 +40,20 @@ func Detect(filename string) string {
 		os.Exit(0)
 	}
 
-	result = annotations[0].Description
-
-	if !strings.HasPrefix(result, "本日の運動結果") &&
-		!strings.HasPrefix(result, "Today's Results") {
-		fmt.Println("No images found.")
-		os.Exit(0)
+	result := annotations[0].Description
+	if contains(strings.Split(result, "\n"), "本日の運動結果") ||
+		contains(strings.Split(result, "\n"), "Today's Results") {
+		return result
 	}
 
-	return result
+	return ""
+}
+
+func contains(texts []string, key string) bool {
+	for _, text := range texts {
+		if strings.HasPrefix(text, key) {
+			return true
+		}
+	}
+	return false
 }

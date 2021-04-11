@@ -20,8 +20,6 @@ func main() {
 	rslts := twitter.Search(twitterId, size)
 
 	for _, rslt := range rslts {
-		fmt.Printf("@%s\n", rslt.ScreenName)
-
 		urls := rslt.MediaUrlHttps
 		for _, url := range urls {
 			fmt.Println(url)
@@ -29,6 +27,9 @@ func main() {
 			defer os.Remove(file.Name())
 
 			text := vision_texts.Detect(file.Name())
+			if text == "" {
+				continue
+			}
 			csvName := bq.CreateCsv(*twitterId, rslt.CreatedAt, text)
 			if csvName == "" {
 				continue
