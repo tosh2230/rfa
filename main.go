@@ -13,13 +13,14 @@ import (
 
 func main() {
 	projectID := flag.String("p", "", "gcp_project_id")
+	location := flag.String("l", "us", "bigquery_location")
 	twitterId := flag.String("u", "", "twitter_id")
 	sizeStr := flag.String("s", "1", "search_size")
 	flag.Parse()
 
 	size, _ := strconv.Atoi(*sizeStr)
 
-	latest, err := bq.GetLatest(*projectID, "us", *twitterId)
+	latest, err := bq.GetLatest(*projectID, *location, *twitterId)
 	if err != nil {
 		log.Fatal(err)
 	}
