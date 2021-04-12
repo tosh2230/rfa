@@ -52,7 +52,8 @@ func replaceLines(lines []string) []string {
 		rLine := strings.TrimSpace(strings.Trim(line, "*"))
 		rLine = strings.Replace(rLine, "Om(", "0m(", 1)
 		rLine = strings.Replace(rLine, "0(", "回(", 1)
-		rLines = append(rLines, rLine)
+		rLineSplited := strings.Split(rLine, " ")
+		rLines = append(rLines, rLineSplited...)
 	}
 	return rLines
 }
@@ -74,7 +75,6 @@ func setSummary(twitterId string, createdAt time.Time, lines []string) []*Summar
 	rQuantity := regexp.MustCompile(`^[0-9.]+`)
 
 	for i, line := range lines {
-
 		if rQuantity.MatchString(line) {
 			strTotalTime := strings.ReplaceAll(line, "時", "h")
 			strTotalTime = strings.ReplaceAll(strTotalTime, "分", "m")
@@ -101,25 +101,24 @@ func createCsvDetails(twitterId string, createdAt time.Time, lines []string) str
 	var csvName string = "./csv/details.csv"
 	var isEven bool = (len(lines)%2 == 0)
 	var isExercise bool = false
+	rExercise := regexp.MustCompile(`^[^0-9]+`)
 	details := []*Details{}
 
 	for i, line := range lines {
-		rExercise := regexp.MustCompile(`^[^0-9]+`)
-
-		if isExercise && !isEven &&
+		if strings.HasPrefix(line, "カッコ内はプレイ開始からの累計値です") {
+			break
+		} else if isExercise && !isEven &&
 			rExercise.MatchString(line) &&
 			rExercise.MatchString(lines[i+1]) {
 			details = setDetails(details, twitterId, createdAt, line, lines[i+4])
 			details = setDetails(details, twitterId, createdAt, lines[i+1], lines[i+3])
 			details = setDetails(details, twitterId, createdAt, lines[i+2], lines[i+5])
 			break
-		} else if strings.HasPrefix(line, "カッコ内はプレイ開始からの累計値です") {
-			break
 		} else if isExercise && rExercise.MatchString(line) {
 			details = setDetails(details, twitterId, createdAt, line, lines[i+1])
 		}
 
-		if strings.HasPrefix(line, "R 画面を撮影する") {
+		if strings.HasPrefix(line, "R画面を撮影する") {
 			isExercise = true
 		}
 	}

@@ -7,17 +7,12 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"cloud.google.com/go/bigquery"
 	"google.golang.org/api/iterator"
 )
 
 const datasetID string = "rfa"
-
-type latest struct {
-	MaxCreatedAt time.Time
-}
 
 func LoadCsv(projectID string, filename string) error {
 	var tableID string = strings.ReplaceAll(filepath.Base(filename), filepath.Ext(filename), "")
@@ -53,8 +48,8 @@ func LoadCsv(projectID string, filename string) error {
 	return nil
 }
 
-func Query(projectID string, location string, w io.Writer) ([]latest, error) {
-	var results []latest
+func Query(projectID string, w io.Writer) ([][]bigquery.Value, error) {
+	var results [][]bigquery.Value
 	ctx := context.Background()
 	client, err := bigquery.NewClient(ctx, projectID)
 	if err != nil {
@@ -63,10 +58,16 @@ func Query(projectID string, location string, w io.Writer) ([]latest, error) {
 	defer client.Close()
 
 	q := client.Query(
-		"SELECT name FROM `bigquery-public-data.usa_names.usa_1910_2013` " +
-			"WHERE state = \"TX\" " +
-			"LIMIT 100")
+		"select" +
+			"	max(created_at)" +
+			"from (" +
+			"	select max(created_at) as created_at from rfa.summary" +
+			"	union all" +
+			"	select max(created_at) as created_at from rfa.details" +
+			")",
+	)
 	q.Location = "US"
+	q.UseLegacySQL = false
 	job, err := q.Run(ctx)
 	if err != nil {
 		return results, err
@@ -88,7 +89,7 @@ func Query(projectID string, location string, w io.Writer) ([]latest, error) {
 		if err != nil {
 			return results, err
 		}
-		results = append(results, &row)
+		results = append(results, row)
 	}
 	return results, nil
 }
