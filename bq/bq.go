@@ -3,16 +3,66 @@ package bq
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"cloud.google.com/go/bigquery"
 	"google.golang.org/api/iterator"
 )
 
 const datasetID string = "rfa"
+
+type Latest struct {
+	CreatedAt time.Time `json:"created_at" csv:"created_at"`
+}
+
+func GetLatest(projectID string, location string, twitterId string) ([]*Latest, error) {
+	var results []*Latest
+	queryStr := fmt.Sprintf("SELECT"+
+		"	MAX(created_at) AS CreatedAt"+
+		" FROM ("+
+		"	SELECT MAX(created_at) AS created_at FROM rfa.summary"+
+		"	WHERE twitter_id = '%s'"+
+		"	UNION ALL"+
+		"	SELECT MAX(created_at) AS created_at FROM rfa.details"+
+		"	WHERE twitter_id = '%s'"+
+		")", twitterId, twitterId)
+
+	iter, err := Query(projectID, location, queryStr)
+	if err != nil {
+		return nil, err
+	}
+
+	for {
+		var row Latest
+		err := iter.Next(&row)
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		results = append(results, &row)
+	}
+	return results, nil
+}
+
+func Query(projectID string, location string, queryStr string) (*bigquery.RowIterator, error) {
+	ctx := context.Background()
+	client, err := bigquery.NewClient(ctx, projectID)
+	if err != nil {
+		return nil, fmt.Errorf("bigquery.NewClient: %v", err)
+	}
+	defer client.Close()
+
+	q := client.Query(queryStr)
+	q.Location = location
+	q.UseLegacySQL = false
+
+	return q.Read(ctx)
+}
 
 func LoadCsv(projectID string, filename string) error {
 	var tableID string = strings.ReplaceAll(filepath.Base(filename), filepath.Ext(filename), "")
@@ -46,50 +96,4 @@ func LoadCsv(projectID string, filename string) error {
 		return err
 	}
 	return nil
-}
-
-func Query(projectID string, w io.Writer) ([][]bigquery.Value, error) {
-	var results [][]bigquery.Value
-	ctx := context.Background()
-	client, err := bigquery.NewClient(ctx, projectID)
-	if err != nil {
-		return results, fmt.Errorf("bigquery.NewClient: %v", err)
-	}
-	defer client.Close()
-
-	q := client.Query(
-		"select" +
-			"	max(created_at)" +
-			"from (" +
-			"	select max(created_at) as created_at from rfa.summary" +
-			"	union all" +
-			"	select max(created_at) as created_at from rfa.details" +
-			")",
-	)
-	q.Location = "US"
-	q.UseLegacySQL = false
-	job, err := q.Run(ctx)
-	if err != nil {
-		return results, err
-	}
-	status, err := job.Wait(ctx)
-	if err != nil {
-		return results, err
-	}
-	if err := status.Err(); err != nil {
-		return results, err
-	}
-	it, _ := job.Read(ctx)
-	for {
-		var row []bigquery.Value
-		err := it.Next(&row)
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return results, err
-		}
-		results = append(results, row)
-	}
-	return results, nil
 }

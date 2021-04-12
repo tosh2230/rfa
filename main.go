@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"rfa/bq"
 	"rfa/twitter"
@@ -17,7 +18,14 @@ func main() {
 	flag.Parse()
 
 	size, _ := strconv.Atoi(*sizeStr)
-	rslts := twitter.Search(twitterId, size)
+
+	latest, err := bq.GetLatest(*projectID, "us", *twitterId)
+	if err != nil {
+		log.Fatal(err)
+	}
+	lastExecutedAt := latest[0].CreatedAt
+
+	rslts := twitter.Search(twitterId, size, lastExecutedAt)
 
 	for _, rslt := range rslts {
 		urls := rslt.MediaUrlHttps
@@ -37,7 +45,7 @@ func main() {
 
 			err := bq.LoadCsv(*projectID, csvName)
 			if err != nil {
-				panic(err)
+				log.Fatal(err)
 			}
 		}
 	}

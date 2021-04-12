@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/ChimeraCoder/anaconda"
 	"gopkg.in/ini.v1"
@@ -48,7 +49,7 @@ func init() {
 	}
 }
 
-func Search(user *string, count int) []Rslt {
+func Search(user *string, count int, lastExecutedAt time.Time) []Rslt {
 	const hashTag string = "RingFitAdventure"
 	const filterIn string = "twimg"
 	const filterEx string = "retweets"
@@ -59,6 +60,7 @@ func Search(user *string, count int) []Rslt {
 	api := anaconda.NewTwitterApi(Cfg.accessToken, Cfg.accessTokenSecret)
 
 	keyword := fmt.Sprintf("from:%s #%s filter:%s -filter:%s", *user, hashTag, filterIn, filterEx)
+	// keyword := fmt.Sprintf("from:%s #%s filter:%s -filter:%s since:%s", *user, hashTag, filterIn, filterEx, lastExecutedAt.Format("2006-01-02_15:04:05_MST"))
 	v := url.Values{}
 	v.Set("count", strconv.Itoa(count))
 

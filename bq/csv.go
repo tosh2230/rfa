@@ -118,7 +118,8 @@ func createCsvDetails(twitterId string, createdAt time.Time, lines []string) str
 			details = setDetails(details, twitterId, createdAt, line, lines[i+1])
 		}
 
-		if strings.HasPrefix(line, "R画面を撮影する") {
+		if strings.HasPrefix(line, "R画面を撮影する") ||
+			strings.HasPrefix(line, "画面を撮影する") {
 			isExercise = true
 		}
 	}
