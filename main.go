@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -9,6 +10,9 @@ import (
 	"rfa/twitter"
 	"rfa/vision_texts"
 	"strconv"
+	"time"
+
+	"google.golang.org/api/googleapi"
 )
 
 func main() {
@@ -20,11 +24,23 @@ func main() {
 
 	size, _ := strconv.Atoi(*sizeStr)
 
+	var lastExecutedAt time.Time
 	latest, err := bq.GetLatest(*projectID, *location, *twitterId)
 	if err != nil {
-		log.Fatal(err)
+		var gerr *googleapi.Error
+		if ok := errors.As(err, &gerr); ok {
+			switch gerr.Code {
+			case 404:
+				lastExecutedAt = time.Time{}
+			default:
+				log.Fatal(err)
+			}
+		} else {
+			log.Fatal(err)
+		}
+	} else {
+		lastExecutedAt = latest[0].CreatedAt
 	}
-	lastExecutedAt := latest[0].CreatedAt
 
 	rslts := twitter.Search(twitterId, size, lastExecutedAt)
 
@@ -39,7 +55,7 @@ func main() {
 			if text == "" {
 				continue
 			}
-			csvName := bq.CreateCsv(*twitterId, rslt.CreatedAt, text)
+			csvName := bq.CreateCsv(*twitterId, rslt.CreatedAt, url, text)
 			if csvName == "" {
 				continue
 			}

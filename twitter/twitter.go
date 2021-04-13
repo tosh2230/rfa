@@ -60,7 +60,9 @@ func Search(user *string, count int, lastExecutedAt time.Time) []Rslt {
 	api := anaconda.NewTwitterApi(Cfg.accessToken, Cfg.accessTokenSecret)
 
 	keyword := fmt.Sprintf("from:%s #%s filter:%s -filter:%s", *user, hashTag, filterIn, filterEx)
-	// keyword := fmt.Sprintf("from:%s #%s filter:%s -filter:%s since:%s", *user, hashTag, filterIn, filterEx, lastExecutedAt.Format("2006-01-02_15:04:05_MST"))
+	// searchTime := lastExecutedAt.Add(1 * time.Second)
+	// keyword := fmt.Sprintf("from:%s #%s filter:%s -filter:%s since:%s", *user, hashTag, filterIn, filterEx, searchTime.Format("2006-01-02_15:04:05_MST"))
+
 	v := url.Values{}
 	v.Set("count", strconv.Itoa(count))
 

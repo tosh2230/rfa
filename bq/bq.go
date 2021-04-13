@@ -65,7 +65,7 @@ func Query(projectID string, location string, queryStr string) (*bigquery.RowIte
 }
 
 func LoadCsv(projectID string, filename string) error {
-	var tableID string = strings.ReplaceAll(filepath.Base(filename), filepath.Ext(filename), "")
+	var tableID string = strings.Split(filepath.Base(filename), "_")[0]
 
 	ctx := context.Background()
 	client, err := bigquery.NewClient(ctx, projectID)

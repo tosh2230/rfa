@@ -1,7 +1,9 @@
 package bq
 
 import (
+	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -12,21 +14,23 @@ import (
 
 type Summary struct {
 	TwitterId            string        `json:"twitter_id" csv:"twitter_id"`
+	CreatedAt            time.Time     `json:"created_at" csv:"created_at"`
+	ImageUrl             string        `json:"image_url" csv:"image_url"`
 	TotalTimeExcercising time.Duration `json:"total_time_excercising" csv:"total_time_excercising"`
 	TotalCaloriesBurned  float64       `json:"total_calories_burned" csv:"total_calories_burned"`
 	TotalDistanceRun     float64       `json:"total_distance_run" csv:"total_distance_run"`
-	CreatedAt            time.Time     `json:"created_at" csv:"created_at"`
 }
 
 type Details struct {
 	TwitterId     string    `json:"twitter_id" csv:"twitter_id"`
+	CreatedAt     time.Time `json:"created_at" csv:"created_at"`
+	ImageUrl      string    `json:"image_url" csv:"image_url"`
 	ExerciseName  string    `json:"exercise_name" csv:"exercise_name"`
 	Quantity      int       `json:"quantity" csv:"quantity"`
 	TotalQuantity int       `json:"total_quantity" csv:"total_quantity"`
-	CreatedAt     time.Time `json:"created_at" csv:"created_at"`
 }
 
-func CreateCsv(twitterId string, createdAtStr string, text string) string {
+func CreateCsv(twitterId string, createdAtStr string, url string, text string) string {
 	var csvName string = ""
 
 	createdAt, _ := time.Parse("Mon Jan 2 15:04:05 -0700 2006", createdAtStr)
@@ -36,11 +40,11 @@ func CreateCsv(twitterId string, createdAtStr string, text string) string {
 	switch {
 	// summary
 	case strings.HasPrefix(lastWords, "次へ"), strings.HasPrefix(lastWords, "Next"):
-		csvName = createCsvSummary(twitterId, createdAt, lines)
+		csvName = createCsvSummary(twitterId, createdAt, url, lines)
 
 	// details
 	case strings.HasPrefix(lastWords, "とじる"), strings.HasPrefix(lastWords, "Close"):
-		csvName = createCsvDetails(twitterId, createdAt, lines)
+		csvName = createCsvDetails(twitterId, createdAt, url, lines)
 	}
 
 	return csvName
@@ -58,9 +62,10 @@ func replaceLines(lines []string) []string {
 	return rLines
 }
 
-func createCsvSummary(twitterId string, createdAt time.Time, lines []string) string {
-	var csvName string = "./csv/summary.csv"
-	summary := setSummary(twitterId, createdAt, lines)
+func createCsvSummary(twitterId string, createdAt time.Time, url string, lines []string) string {
+	prefix := strings.ReplaceAll(filepath.Base(url), filepath.Ext(url), "")
+	csvName := fmt.Sprintf("./csv/summary_%s.csv", prefix)
+	summary := setSummary(twitterId, createdAt, url, lines)
 
 	_ = os.Remove(csvName)
 	csvfile, _ := os.OpenFile(csvName, os.O_RDWR|os.O_CREATE, os.ModePerm)
@@ -70,7 +75,7 @@ func createCsvSummary(twitterId string, createdAt time.Time, lines []string) str
 	return csvName
 }
 
-func setSummary(twitterId string, createdAt time.Time, lines []string) []*Summary {
+func setSummary(twitterId string, createdAt time.Time, url string, lines []string) []*Summary {
 	var summary []*Summary
 	rQuantity := regexp.MustCompile(`^[0-9.]+`)
 
@@ -86,10 +91,11 @@ func setSummary(twitterId string, createdAt time.Time, lines []string) []*Summar
 
 			summary = append(summary, &Summary{
 				TwitterId:            twitterId,
+				CreatedAt:            createdAt,
+				ImageUrl:             url,
 				TotalTimeExcercising: totalTimeExcercising,
 				TotalCaloriesBurned:  totalCaloriesBurned,
 				TotalDistanceRun:     totalDistanceRun,
-				CreatedAt:            createdAt,
 			})
 			break
 		}
@@ -97,8 +103,9 @@ func setSummary(twitterId string, createdAt time.Time, lines []string) []*Summar
 	return summary
 }
 
-func createCsvDetails(twitterId string, createdAt time.Time, lines []string) string {
-	var csvName string = "./csv/details.csv"
+func createCsvDetails(twitterId string, createdAt time.Time, url string, lines []string) string {
+	prefix := strings.ReplaceAll(filepath.Base(url), filepath.Ext(url), "")
+	csvName := fmt.Sprintf("./csv/details_%s.csv", prefix)
 	var isEven bool = (len(lines)%2 == 0)
 	var isExercise bool = false
 	rExercise := regexp.MustCompile(`^[^0-9]+`)
@@ -110,12 +117,12 @@ func createCsvDetails(twitterId string, createdAt time.Time, lines []string) str
 		} else if isExercise && !isEven &&
 			rExercise.MatchString(line) &&
 			rExercise.MatchString(lines[i+1]) {
-			details = setDetails(details, twitterId, createdAt, line, lines[i+4])
-			details = setDetails(details, twitterId, createdAt, lines[i+1], lines[i+3])
-			details = setDetails(details, twitterId, createdAt, lines[i+2], lines[i+5])
+			details = setDetails(details, twitterId, createdAt, url, line, lines[i+4])
+			details = setDetails(details, twitterId, createdAt, url, lines[i+1], lines[i+3])
+			details = setDetails(details, twitterId, createdAt, url, lines[i+2], lines[i+5])
 			break
 		} else if isExercise && rExercise.MatchString(line) {
-			details = setDetails(details, twitterId, createdAt, line, lines[i+1])
+			details = setDetails(details, twitterId, createdAt, url, line, lines[i+1])
 		}
 
 		if strings.HasPrefix(line, "R画面を撮影する") ||
@@ -132,7 +139,7 @@ func createCsvDetails(twitterId string, createdAt time.Time, lines []string) str
 	return csvName
 }
 
-func setDetails(details []*Details, twitterId string, createdAt time.Time, nameLine string, quantityLine string) []*Details {
+func setDetails(details []*Details, twitterId string, createdAt time.Time, url string, nameLine string, quantityLine string) []*Details {
 	rQuantity := regexp.MustCompile(`^[0-9]+`)
 	rTotalQuantity := regexp.MustCompile(`\([0-9]+`)
 
@@ -141,10 +148,11 @@ func setDetails(details []*Details, twitterId string, createdAt time.Time, nameL
 	totalQuantity, _ := strconv.Atoi(strings.Trim(strTotalQuantity[0], "("))
 	details = append(details, &Details{
 		TwitterId:     twitterId,
+		CreatedAt:     createdAt,
+		ImageUrl:      url,
 		ExerciseName:  nameLine,
 		Quantity:      quantity,
 		TotalQuantity: totalQuantity,
-		CreatedAt:     createdAt,
 	})
 
 	return details
