@@ -56,6 +56,7 @@ func main() {
 				continue
 			}
 			csvName := bq.CreateCsv(*twitterId, rslt.CreatedAt, url, text)
+			defer os.Remove(csvName)
 			if csvName == "" {
 				continue
 			}
@@ -64,6 +65,7 @@ func main() {
 			if err != nil {
 				log.Fatal(err)
 			}
+
 		}
 	}
 }
