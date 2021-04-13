@@ -32,7 +32,6 @@ type Details struct {
 
 func CreateCsv(twitterId string, createdAtStr string, url string, text string) string {
 	var csvName string = ""
-
 	createdAt, _ := time.Parse("Mon Jan 2 15:04:05 -0700 2006", createdAtStr)
 	lines := replaceLines(strings.Split(text, "\n"))
 	lastWords := lines[len(lines)-2]
@@ -63,8 +62,9 @@ func replaceLines(lines []string) []string {
 }
 
 func createCsvSummary(twitterId string, createdAt time.Time, url string, lines []string) string {
+	current, _ := os.Getwd()
 	prefix := strings.ReplaceAll(filepath.Base(url), filepath.Ext(url), "")
-	csvName := fmt.Sprintf("./csv/summary_%s.csv", prefix)
+	csvName := fmt.Sprintf("%s/csv/summary_%s.csv", current, prefix)
 	summary := setSummary(twitterId, createdAt, url, lines)
 
 	_ = os.Remove(csvName)
@@ -104,8 +104,9 @@ func setSummary(twitterId string, createdAt time.Time, url string, lines []strin
 }
 
 func createCsvDetails(twitterId string, createdAt time.Time, url string, lines []string) string {
+	current, _ := os.Getwd()
 	prefix := strings.ReplaceAll(filepath.Base(url), filepath.Ext(url), "")
-	csvName := fmt.Sprintf("./csv/details_%s.csv", prefix)
+	csvName := fmt.Sprintf("%s/csv/details_%s.csv", current, prefix)
 	var isEven bool = (len(lines)%2 == 0)
 	var isExercise bool = false
 	rExercise := regexp.MustCompile(`^[^0-9]+`)

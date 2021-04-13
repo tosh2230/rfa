@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"cloud.google.com/go/bigquery"
 	"google.golang.org/api/iterator"
@@ -15,7 +14,7 @@ import (
 const datasetID string = "rfa"
 
 type Latest struct {
-	CreatedAt time.Time `json:"created_at" csv:"created_at"`
+	CreatedAt bigquery.NullTimestamp `json:"created_at" csv:"created_at"`
 }
 
 func GetLatest(projectID string, location string, twitterId string) ([]*Latest, error) {
@@ -33,6 +32,9 @@ func GetLatest(projectID string, location string, twitterId string) ([]*Latest, 
 	iter, err := Query(projectID, location, queryStr)
 	if err != nil {
 		return nil, err
+	}
+	if iter == nil {
+		return nil, nil
 	}
 
 	for {

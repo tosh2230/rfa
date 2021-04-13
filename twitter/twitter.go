@@ -54,14 +54,18 @@ func Search(user *string, count int, lastExecutedAt time.Time) []Rslt {
 	const filterIn string = "twimg"
 	const filterEx string = "retweets"
 	var rslts []Rslt
+	var keyword string
 
 	anaconda.SetConsumerKey(Cfg.consumerKey)
 	anaconda.SetConsumerSecret(Cfg.consumerSecret)
 	api := anaconda.NewTwitterApi(Cfg.accessToken, Cfg.accessTokenSecret)
 
-	keyword := fmt.Sprintf("from:%s #%s filter:%s -filter:%s", *user, hashTag, filterIn, filterEx)
-	// searchTime := lastExecutedAt.Add(1 * time.Second)
-	// keyword := fmt.Sprintf("from:%s #%s filter:%s -filter:%s since:%s", *user, hashTag, filterIn, filterEx, searchTime.Format("2006-01-02_15:04:05_MST"))
+	if lastExecutedAt == (time.Time{}) {
+		keyword = fmt.Sprintf("from:%s #%s filter:%s -filter:%s", *user, hashTag, filterIn, filterEx)
+	} else {
+		searchTime := lastExecutedAt.Add(1 * time.Second)
+		keyword = fmt.Sprintf("from:%s #%s filter:%s -filter:%s since:%s", *user, hashTag, filterIn, filterEx, searchTime.Format("2006-01-02_15:04:05_MST"))
+	}
 
 	v := url.Values{}
 	v.Set("count", strconv.Itoa(count))
