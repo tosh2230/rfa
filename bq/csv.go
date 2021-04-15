@@ -51,10 +51,19 @@ func CreateCsv(twitterId string, createdAtStr string, url string, text string) s
 
 func replaceLines(lines []string) []string {
 	var rLines []string
+
+	replaceStr2d := [][]string{
+		{"Om(", "0m("},
+		{"0(", "回("},
+		{"押しにみ", "押しこみ"},
+		{"スクワフット", "スクワット"},
+	}
+
 	for _, line := range lines {
 		rLine := strings.TrimSpace(strings.Trim(line, "*"))
-		rLine = strings.Replace(rLine, "Om(", "0m(", 1)
-		rLine = strings.Replace(rLine, "0(", "回(", 1)
+		for _, replaceStr := range replaceStr2d {
+			rLine = strings.Replace(rLine, replaceStr[0], replaceStr[1], 1)
+		}
 		rLineSplited := strings.Split(rLine, " ")
 		rLines = append(rLines, rLineSplited...)
 	}
