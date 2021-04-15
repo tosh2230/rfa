@@ -38,11 +38,11 @@ func CreateCsv(twitterId string, createdAtStr string, url string, text string) s
 
 	switch {
 	// summary
-	case strings.HasPrefix(lastWords, "次へ"), strings.HasPrefix(lastWords, "Next"):
+	case strings.HasSuffix(lastWords, "次へ"), strings.HasSuffix(lastWords, "Next"):
 		csvName = createCsvSummary(twitterId, createdAt, url, lines)
 
 	// details
-	case strings.HasPrefix(lastWords, "とじる"), strings.HasPrefix(lastWords, "Close"):
+	case strings.HasSuffix(lastWords, "とじる"), strings.HasSuffix(lastWords, "Close"):
 		csvName = createCsvDetails(twitterId, createdAt, url, lines)
 	}
 
