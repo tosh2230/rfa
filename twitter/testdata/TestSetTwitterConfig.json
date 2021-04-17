@@ -1,0 +1,6 @@
+{
+    "consumer_key": "TestSetTwitterConfig.consumer_key",
+    "consumer_secret":"TestSetTwitterConfig.consumer_secret",
+    "access_token": "TestSetTwitterConfig.access_token",
+    "access_token_secret": "TestSetTwitterConfig.access_token_secret"
+}
