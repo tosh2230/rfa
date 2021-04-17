@@ -21,7 +21,7 @@
 .vscode
 
 rfa
-csv/
+csv/*.csv
 img/
 
 # VSCode Remote Container
