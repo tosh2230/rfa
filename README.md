@@ -1,6 +1,6 @@
 # rfa
 
-Detect texts in screenshots of "Ring Fit Adventure for Nintendo Switch" posted on twitter and save the play record to Google BigQuery.
+Detect text in screenshots of "Ring Fit Adventure for Nintendo Switch" posted on twitter and save the play record to Google BigQuery.
 
 ## Description
 
@@ -57,6 +57,8 @@ Usage of ./rfa:
     ```
 
 - Set environment variable `TEST_PROJECT_ID`
+
+- Regist string for testing to Cloud Secret Manager as `rfa_test`
 
     ```sh
     $ gcloud secrets create rfa_test --data-file=./twitter/testdata/TestSetTwitterConfig.json
