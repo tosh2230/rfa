@@ -1,26 +1,26 @@
 package twitter
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
+	"rfa/gcpsecretmanager"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/ChimeraCoder/anaconda"
-	"gopkg.in/ini.v1"
 )
 
 type CfgList struct {
-	consumerKey       string
-	consumerSecret    string
-	accessToken       string
-	accessTokenSecret string
+	ConsumerKey       string `json:"consumer_key,omitempty"`
+	ConsumerSecret    string `json:"consumer_secret,omitempty"`
+	AccessToken       string `json:"access_token,omitempty"`
+	AccessTokenSecret string `json:"access_token_secret,omitempty"`
 }
 
 type Rslt struct {
@@ -29,36 +29,31 @@ type Rslt struct {
 	MediaUrlHttps []string
 }
 
-var Cfg CfgList
-var Section string = "DEFAULT"
-var IniFile string = ".twitter/config.ini"
+const secretID string = "rfa"
+const secretVersion string = "latest"
 
-func init() {
-	home := os.Getenv("HOME")
-	iniPath := fmt.Sprintf("%s/%s", home, IniFile)
-	iniCfg, err := ini.Load(iniPath)
+func GetConfig(pj string) (cfg CfgList, err error) {
+	data, err := getFromSecretManager(pj, secretID, secretVersion)
 	if err != nil {
-		log.Fatalf("Failed to load config.ini: %v", err)
+		return
 	}
-
-	Cfg = CfgList{
-		consumerKey:       iniCfg.Section(Section).Key("CONSUMER_KEY").String(),
-		consumerSecret:    iniCfg.Section(Section).Key("CONSUMER_SECRET").String(),
-		accessToken:       iniCfg.Section(Section).Key("ACCESS_TOKEN").String(),
-		accessTokenSecret: iniCfg.Section(Section).Key("ACCESS_TOKEN_SECRET").String(),
+	err = cfg.setTwitterConfig(data)
+	if err != nil {
+		return
 	}
+	return
 }
 
-func Search(user *string, count int, lastExecutedAt time.Time) []Rslt {
+func (cfg *CfgList) Search(user *string, count int, lastExecutedAt time.Time) []Rslt {
 	const hashTag string = "RingFitAdventure"
 	const filterIn string = "twimg"
 	const filterEx string = "retweets"
 	var rslts []Rslt
 	var keyword string
 
-	anaconda.SetConsumerKey(Cfg.consumerKey)
-	anaconda.SetConsumerSecret(Cfg.consumerSecret)
-	api := anaconda.NewTwitterApi(Cfg.accessToken, Cfg.accessTokenSecret)
+	anaconda.SetConsumerKey(cfg.ConsumerKey)
+	anaconda.SetConsumerSecret(cfg.ConsumerSecret)
+	api := anaconda.NewTwitterApi(cfg.AccessToken, cfg.AccessTokenSecret)
 
 	if lastExecutedAt == (time.Time{}) {
 		keyword = fmt.Sprintf("from:%s #%s filter:%s -filter:%s", *user, hashTag, filterIn, filterEx)
@@ -100,4 +95,44 @@ func GetImage(url string) *os.File {
 	io.Copy(file, response.Body)
 
 	return file
+}
+
+func getFromSecretManager(pj string, secID string, ver string) (data []byte, err error) {
+	var secMgr gcpsecretmanager.SecretManager
+
+	secMgr.ProjectID = pj
+	secMgr.SecretID = secID
+	secMgr.Version = ver
+
+	data, err = secMgr.Access()
+	if err != nil {
+		return
+	}
+
+	return
+}
+
+func (cfg *CfgList) setTwitterConfig(b []byte) (err error) {
+	err = json.Unmarshal(b, &cfg)
+	if err != nil {
+		return
+	}
+	if cfg.ConsumerKey == "" {
+		err = fmt.Errorf("twitter.CfgList.ConsumerKey is empty.")
+		return
+	}
+	if cfg.ConsumerSecret == "" {
+		err = fmt.Errorf("twitter.CfgList.ConsumerSecret is empty.")
+		return
+	}
+	if cfg.AccessToken == "" {
+		err = fmt.Errorf("twitter.CfgList.AccessToken is empty.")
+		return
+	}
+	if cfg.AccessTokenSecret == "" {
+		err = fmt.Errorf("twitter.CfgList.AccessTokenSecret is empty.")
+		return
+	}
+
+	return
 }
