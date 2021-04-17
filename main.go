@@ -28,7 +28,12 @@ func main() {
 
 	size, _ := strconv.Atoi(*sizeStr)
 	lastExecutedAt := getLastExecutedAt(*projectID, *location, *twitterId)
-	rslts := twitter.Search(twitterId, size, lastExecutedAt)
+
+	twCfg, err := twitter.GetConfig(*projectID)
+	if err != nil {
+		log.Fatal(err)
+	}
+	rslts := twCfg.Search(twitterId, size, lastExecutedAt)
 
 	for _, rslt := range rslts {
 		// Wait Group 01: Twitter Search
