@@ -23,3 +23,11 @@
 rfa
 csv/
 img/
+
+# VSCode Remote Container
+.devcontainer
+
+# Secret Directory
+secret/*
+# Exclude SecretManager sample file
+!secret/secret-manager_example.json
