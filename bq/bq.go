@@ -83,7 +83,7 @@ func LoadCsv(projectID string, filename string) error {
 	source := bigquery.NewReaderSource(f)
 	source.SourceFormat = bigquery.CSV
 	source.SkipLeadingRows = 1
-	source.Schema = getSchema(filename)
+	source.Schema = getSchema(tableID)
 
 	loader := client.Dataset(datasetID).Table(tableID).LoaderFrom(source)
 
@@ -101,10 +101,10 @@ func LoadCsv(projectID string, filename string) error {
 	return nil
 }
 
-func getSchema(filename string) bigquery.Schema {
+func getSchema(tableID string) bigquery.Schema {
 	var schema bigquery.Schema
-	switch {
-	case strings.HasPrefix(filename, "summary"):
+	switch tableID {
+	case "summary":
 		schema = bigquery.Schema{
 			{Name: "twitter_id", Type: bigquery.StringFieldType},
 			{Name: "created_at", Type: bigquery.TimestampFieldType},
@@ -113,7 +113,7 @@ func getSchema(filename string) bigquery.Schema {
 			{Name: "total_calories_burned", Type: bigquery.FloatFieldType},
 			{Name: "total_distance_run", Type: bigquery.FloatFieldType},
 		}
-	case strings.HasPrefix(filename, "details"):
+	case "details":
 		schema = bigquery.Schema{
 			{Name: "twitter_id", Type: bigquery.StringFieldType},
 			{Name: "created_at", Type: bigquery.TimestampFieldType},
