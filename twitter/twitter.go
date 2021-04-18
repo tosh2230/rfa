@@ -119,19 +119,19 @@ func (cfg *CfgList) setTwitterConfig(b []byte) (err error) {
 		return
 	}
 	if cfg.ConsumerKey == "" {
-		err = fmt.Errorf("twitter.CfgList.ConsumerKey is empty.")
+		err = fmt.Errorf("twitter.CfgList.ConsumerKey is empty")
 		return
 	}
 	if cfg.ConsumerSecret == "" {
-		err = fmt.Errorf("twitter.CfgList.ConsumerSecret is empty.")
+		err = fmt.Errorf("twitter.CfgList.ConsumerSecret is empty")
 		return
 	}
 	if cfg.AccessToken == "" {
-		err = fmt.Errorf("twitter.CfgList.AccessToken is empty.")
+		err = fmt.Errorf("twitter.CfgList.AccessToken is empty")
 		return
 	}
 	if cfg.AccessTokenSecret == "" {
-		err = fmt.Errorf("twitter.CfgList.AccessTokenSecret is empty.")
+		err = fmt.Errorf("twitter.CfgList.AccessTokenSecret is empty")
 		return
 	}
 
