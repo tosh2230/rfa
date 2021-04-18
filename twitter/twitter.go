@@ -8,10 +8,11 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"rfa/gcpsecretmanager"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/tosh223/rfa/gcpsecretmanager"
 
 	"github.com/ChimeraCoder/anaconda"
 )

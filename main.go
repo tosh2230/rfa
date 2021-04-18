@@ -6,12 +6,13 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"rfa/bq"
-	"rfa/twitter"
-	"rfa/vision_texts"
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/tosh223/rfa/bq"
+	"github.com/tosh223/rfa/twitter"
+	"github.com/tosh223/rfa/vision_texts"
 
 	"google.golang.org/api/googleapi"
 )
