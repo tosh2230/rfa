@@ -57,6 +57,7 @@ func replaceLines(lines []string) []string {
 		{"0(", "回("},
 		{"押しにみ", "押しこみ"},
 		{"スクワフット", "スクワット"},
+		{"- ", ""},
 	}
 
 	for _, line := range lines {
@@ -86,17 +87,34 @@ func createCsvSummary(twitterId string, createdAt time.Time, url string, lines [
 
 func setSummary(twitterId string, createdAt time.Time, url string, lines []string) []*Summary {
 	var summary []*Summary
+	var totalCaloriesBurned float64 = 0
+	var totalDistanceRun float64 = 0
+
+	replaceTimeUnit := [][]string{
+		{"時", "h"},
+		{"分", "m"},
+		{"秒", "s"},
+	}
+
 	rQuantity := regexp.MustCompile(`^[0-9.]+`)
 
 	for i, line := range lines {
 		if rQuantity.MatchString(line) {
-			strTotalTime := strings.ReplaceAll(line, "時", "h")
-			strTotalTime = strings.ReplaceAll(strTotalTime, "分", "m")
-			strTotalTime = strings.ReplaceAll(strTotalTime, "秒", "s")
+			strTotalTime := line
+			for _, unit := range replaceTimeUnit {
+				strTotalTime = strings.ReplaceAll(strTotalTime, unit[0], unit[1])
+			}
 			totalTimeExcercising, _ := time.ParseDuration(strTotalTime)
-			strTotalCalories := rQuantity.FindAllString(lines[i+2], 1)[0]
-			totalCaloriesBurned, _ := strconv.ParseFloat(strTotalCalories, 64)
-			totalDistanceRun, _ := strconv.ParseFloat(rQuantity.FindAllString(lines[i+4], 1)[0], 64)
+
+			totalCaloriesSlice := rQuantity.FindAllString(lines[i+2], 1)
+			if len(totalCaloriesSlice) > 0 {
+				totalCaloriesBurned, _ = strconv.ParseFloat(totalCaloriesSlice[0], 64)
+			}
+
+			totalDistanceRunSlice := rQuantity.FindAllString(lines[i+4], 1)
+			if len(totalDistanceRunSlice) > 0 {
+				totalDistanceRun, _ = strconv.ParseFloat(totalDistanceRunSlice[0], 64)
+			}
 
 			summary = append(summary, &Summary{
 				TwitterId:            twitterId,

@@ -81,8 +81,9 @@ func LoadCsv(projectID string, filename string) error {
 		return err
 	}
 	source := bigquery.NewReaderSource(f)
-	source.AutoDetect = true
+	source.SourceFormat = bigquery.CSV
 	source.SkipLeadingRows = 1
+	source.Schema = getSchema(filename)
 
 	loader := client.Dataset(datasetID).Table(tableID).LoaderFrom(source)
 
@@ -98,4 +99,29 @@ func LoadCsv(projectID string, filename string) error {
 		return err
 	}
 	return nil
+}
+
+func getSchema(filename string) bigquery.Schema {
+	var schema bigquery.Schema
+	switch {
+	case strings.HasPrefix(filename, "summary"):
+		schema = bigquery.Schema{
+			{Name: "twitter_id", Type: bigquery.StringFieldType},
+			{Name: "created_at", Type: bigquery.TimestampFieldType},
+			{Name: "image_url", Type: bigquery.StringFieldType},
+			{Name: "total_time_excercising", Type: bigquery.StringFieldType},
+			{Name: "total_calories_burned", Type: bigquery.FloatFieldType},
+			{Name: "total_distance_run", Type: bigquery.FloatFieldType},
+		}
+	case strings.HasPrefix(filename, "details"):
+		schema = bigquery.Schema{
+			{Name: "twitter_id", Type: bigquery.StringFieldType},
+			{Name: "created_at", Type: bigquery.TimestampFieldType},
+			{Name: "image_url", Type: bigquery.StringFieldType},
+			{Name: "exercise_name", Type: bigquery.StringFieldType},
+			{Name: "quantity", Type: bigquery.IntegerFieldType},
+			{Name: "total_quantity", Type: bigquery.IntegerFieldType},
+		}
+	}
+	return schema
 }
