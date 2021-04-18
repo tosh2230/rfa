@@ -1,4 +1,4 @@
-module rfa
+module github.com/tosh223/rfa
 
 go 1.15
 
