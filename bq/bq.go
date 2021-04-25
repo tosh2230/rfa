@@ -66,8 +66,8 @@ func Query(projectID string, location string, queryStr string) (*bigquery.RowIte
 	return q.Read(ctx)
 }
 
-func LoadCsv(projectID string, filename string) error {
-	var tableID string = strings.Split(filepath.Base(filename), "_")[0]
+func LoadCsv(projectID string, csvFile *os.File) error {
+	var tableID string = strings.Split(filepath.Base(csvFile.Name()), "_")[0]
 
 	ctx := context.Background()
 	client, err := bigquery.NewClient(ctx, projectID)
@@ -76,11 +76,7 @@ func LoadCsv(projectID string, filename string) error {
 	}
 	defer client.Close()
 
-	f, err := os.Open(filename)
-	if err != nil {
-		return err
-	}
-	source := bigquery.NewReaderSource(f)
+	source := bigquery.NewReaderSource(csvFile)
 	source.SourceFormat = bigquery.CSV
 	source.SkipLeadingRows = 1
 	source.Schema = getSchema(tableID)

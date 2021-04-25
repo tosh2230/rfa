@@ -90,14 +90,13 @@ func detectAndLoad(projectID string, twitterId string, createdAtStr string, url 
 		return
 	}
 
-	csvName := bq.CreateCsv(twitterId, createdAtStr, url, text)
-	if csvName == "" {
+	csvFile := bq.CreateCsv(twitterId, createdAtStr, url, text)
+	if csvFile == nil {
 		return
-	} else {
-		defer os.Remove(csvName)
 	}
+	defer csvFile.Close()
 
-	err := bq.LoadCsv(projectID, csvName)
+	err := bq.LoadCsv(projectID, csvFile)
 	if err != nil {
 		panic(err)
 	}
