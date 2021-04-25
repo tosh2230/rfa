@@ -107,14 +107,26 @@ func setSummary(twitterId string, createdAt time.Time, url string, lines []strin
 			}
 			totalTimeExcercising, _ := time.ParseDuration(strTotalTime)
 
-			totalCaloriesSlice := rQuantity.FindAllString(lines[i+2], 1)
-			if len(totalCaloriesSlice) > 0 {
-				totalCaloriesBurned, _ = strconv.ParseFloat(totalCaloriesSlice[0], 64)
-			}
+			if strings.HasSuffix(lines[i+2], "kcal") {
+				totalCaloriesSlice := rQuantity.FindAllString(lines[i+2], 1)
+				if len(totalCaloriesSlice) > 0 {
+					totalCaloriesBurned, _ = strconv.ParseFloat(totalCaloriesSlice[0], 64)
+				}
 
-			totalDistanceRunSlice := rQuantity.FindAllString(lines[i+4], 1)
-			if len(totalDistanceRunSlice) > 0 {
-				totalDistanceRun, _ = strconv.ParseFloat(totalDistanceRunSlice[0], 64)
+				totalDistanceRunSlice := rQuantity.FindAllString(lines[i+4], 1)
+				if len(totalDistanceRunSlice) > 0 {
+					totalDistanceRun, _ = strconv.ParseFloat(totalDistanceRunSlice[0], 64)
+				}
+			} else {
+				// 4分31秒
+				// 合計活動時間
+				// 13.
+				// 合計消費力ロリー
+				// 05kcal
+				// 合計走行距離
+				totalCaloriesInt := rQuantity.FindAllString(lines[i+2], 1)[0]
+				totalCaloriesFract := rQuantity.FindAllString(lines[i+4], 1)[0]
+				totalCaloriesBurned, _ = strconv.ParseFloat(totalCaloriesInt+totalCaloriesFract, 64)
 			}
 
 			summary = append(summary, &Summary{
