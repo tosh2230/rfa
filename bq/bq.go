@@ -76,7 +76,11 @@ func LoadCsv(projectID string, csvFile *os.File) error {
 	}
 	defer client.Close()
 
-	source := bigquery.NewReaderSource(csvFile)
+	f, err := os.Open(csvFile.Name())
+	if err != nil {
+		return err
+	}
+	source := bigquery.NewReaderSource(f)
 	source.SourceFormat = bigquery.CSV
 	source.SkipLeadingRows = 1
 	source.Schema = getSchema(tableID)

@@ -2,6 +2,7 @@ package bq
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -73,14 +74,14 @@ func replaceLines(lines []string) []string {
 }
 
 func createCsvSummary(twitterId string, createdAt time.Time, url string, lines []string) *os.File {
-	current, _ := os.Getwd()
 	prefix := strings.ReplaceAll(filepath.Base(url), filepath.Ext(url), "")
-	csvName := fmt.Sprintf("%s/csv/summary_%s.csv", current, prefix)
+	csvName := fmt.Sprintf("summary_%s.csv", prefix)
+	csvFile, err := ioutil.TempFile("", csvName)
+	if err != nil {
+		panic(err)
+	}
+
 	summary := setSummary(twitterId, createdAt, url, lines)
-
-	_ = os.Remove(csvName)
-	csvFile, _ := os.OpenFile(csvName, os.O_RDWR|os.O_CREATE, os.ModePerm)
-
 	gocsv.MarshalFile(&summary, csvFile)
 	return csvFile
 }
@@ -131,9 +132,6 @@ func setSummary(twitterId string, createdAt time.Time, url string, lines []strin
 }
 
 func createCsvDetails(twitterId string, createdAt time.Time, url string, lines []string) *os.File {
-	current, _ := os.Getwd()
-	prefix := strings.ReplaceAll(filepath.Base(url), filepath.Ext(url), "")
-	csvName := fmt.Sprintf("%s/csv/details_%s.csv", current, prefix)
 	var isEven bool = (len(lines)%2 == 0)
 	var isExercise bool = false
 	rExercise := regexp.MustCompile(`^[^0-9]+`)
@@ -159,9 +157,12 @@ func createCsvDetails(twitterId string, createdAt time.Time, url string, lines [
 		}
 	}
 
-	_ = os.Remove(csvName)
-	csvFile, _ := os.OpenFile(csvName, os.O_RDWR|os.O_CREATE, os.ModePerm)
-	defer csvFile.Close()
+	prefix := strings.ReplaceAll(filepath.Base(url), filepath.Ext(url), "")
+	csvName := fmt.Sprintf("details_%s.csv", prefix)
+	csvFile, err := ioutil.TempFile("", csvName)
+	if err != nil {
+		panic(err)
+	}
 
 	gocsv.MarshalFile(&details, csvFile)
 	return csvFile
