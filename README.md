@@ -16,7 +16,7 @@ Please see [go.mod](https://github.com/tosh223/rfa/blob/main/go.mod).
 - Regist Twitter developer secrets to Cloud Secret Manager as `rfa`
 
     ```sh
-    $ cat ./secret/secret-manager_example.json
+    $ cat ./secret/twitter_example.json
     {
         "consumer_key": "****************",
         "consumer_secret": "****************",
@@ -24,7 +24,7 @@ Please see [go.mod](https://github.com/tosh223/rfa/blob/main/go.mod).
         "access_token_secret": "****************"
     }
 
-    $ gcloud secrets create rfa --data-file=./secret/secret-manager_example.json
+    $ gcloud secrets create rfa --data-file=./secret/twitter_example.json
     ```
 
 - Create `rfa` dataset in Google BigQuery

@@ -26,4 +26,5 @@ img/
 # Secret Directory
 secret/*
 # Exclude SecretManager sample file
-!secret/secret-manager_example.json
+!secret/twitter_example.json
+!secret/pixela_example.json

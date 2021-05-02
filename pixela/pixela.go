@@ -16,7 +16,7 @@ type CfgList struct {
 	Token   string `json:"token,omitempty"`
 }
 
-const secretID string = "rfa_pixela"
+const secretID string = "rfa-pixela"
 const secretVersion string = "latest"
 
 func GetConfig(pj string) (cfg CfgList, err error) {
