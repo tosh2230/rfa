@@ -79,7 +79,7 @@ func getLastExecutedAt(projectID string, location string, twitterId string) time
 	return lastExecutedAt
 }
 
-func detectAndLoad(projectID string, twitterId string, createdAtStr string, url string) {
+func detectAndLoad(projectID string, twitterId string, createdAt time.Time, url string) {
 	fmt.Println(url)
 	file := twitter.GetImage(url)
 	defer os.Remove(file.Name())
@@ -89,7 +89,7 @@ func detectAndLoad(projectID string, twitterId string, createdAtStr string, url 
 		return
 	}
 
-	csvFile := bq.CreateCsv(twitterId, createdAtStr, url, text)
+	csvFile := bq.CreateCsv(twitterId, createdAt, url, text)
 	if csvFile == nil {
 		return
 	}

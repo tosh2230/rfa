@@ -31,9 +31,8 @@ type Details struct {
 	TotalQuantity int       `json:"total_quantity" csv:"total_quantity"`
 }
 
-func CreateCsv(twitterId string, createdAtStr string, url string, text string) *os.File {
+func CreateCsv(twitterId string, createdAt time.Time, url string, text string) *os.File {
 	var csvFile *os.File
-	createdAt, _ := time.Parse("Mon Jan 2 15:04:05 -0700 2006", createdAtStr)
 	lines := replaceLines(strings.Split(text, "\n"))
 	lastWords := lines[len(lines)-2]
 

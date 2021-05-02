@@ -31,10 +31,9 @@ func GetConfig(pj string) (cfg CfgList, err error) {
 	return
 }
 
-func (cfg *CfgList) Grow(CreatedAtStr string) (err error) {
+func (cfg *CfgList) Grow(CreatedAt time.Time) (err error) {
 	url := "https://pixe.la/v1/users/" + cfg.User + "/graphs/" + cfg.GraphId
-	createdAt, _ := time.Parse("Mon Jan 2 15:04:05 -0700 2006", CreatedAtStr)
-	jsonStr := `{"date":"` + createdAt.Format("20060102") + `","quantity":"1"}`
+	jsonStr := `{"date":"` + CreatedAt.Format("20060102") + `","quantity":"1"}`
 
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer([]byte(jsonStr)))
 	if err != nil {

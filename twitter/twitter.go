@@ -26,7 +26,7 @@ type CfgList struct {
 
 type Rslt struct {
 	ScreenName    string
-	CreatedAt     string
+	CreatedAt     time.Time
 	MediaUrlHttps []string
 }
 
@@ -72,9 +72,10 @@ func (cfg *CfgList) Search(user *string, count int, lastExecutedAt time.Time) []
 		for _, medium := range tweet.ExtendedEntities.Media {
 			urls = append(urls, medium.Media_url_https)
 		}
+		createdAt, _ := time.Parse("Mon Jan 2 15:04:05 -0700 2006", tweet.CreatedAt)
 		rslt := Rslt{
 			ScreenName:    tweet.User.ScreenName,
-			CreatedAt:     tweet.CreatedAt,
+			CreatedAt:     createdAt,
 			MediaUrlHttps: urls,
 		}
 		rslts = append(rslts, rslt)
