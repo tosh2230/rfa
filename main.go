@@ -39,10 +39,9 @@ func main() {
 	for _, rslt := range rslts {
 		// Wait Group 01: Twitter Search
 		wgSearch.Add(1)
-		urls := rslt.MediaUrlHttps
 		go func(r twitter.Rslt) {
 			defer wgSearch.Done()
-			for _, url := range urls {
+			for _, url := range r.MediaUrlHttps {
 				// Wait Group 02: Image Detection & Load csv to BigQuery
 				wgMedia.Add(1)
 				go func(u string) {
