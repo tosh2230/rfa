@@ -22,12 +22,10 @@ const secretVersion string = "latest"
 func GetConfig(pj string) (cfg CfgList, err error) {
 	data, err := getFromSecretManager(pj, secretID, secretVersion)
 	if err != nil {
-		fmt.Println("getFromSecretManager")
-		return
+		return cfg, nil
 	}
 	err = cfg.setPixelaConfig(data)
 	if err != nil {
-		fmt.Println("setPixelaConfig")
 		return
 	}
 	return

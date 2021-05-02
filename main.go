@@ -51,17 +51,15 @@ func main() {
 				}(url)
 			}
 			wgMedia.Wait()
+
+			pxCfg, err := pixela.GetConfig(*projectID)
+			if err != nil {
+				_, err = pxCfg.Grow(r.CreatedAt)
+				if err != nil {
+					log.Fatalln("Error: pixela.CfgList.Grow", err)
+				}
+			}
 		}(rslt)
-
-		pxCfg, err := pixela.GetConfig(*projectID)
-		if err != nil {
-			log.Fatalln("Error: pixela.GetConfig", err)
-		}
-
-		_, err = pxCfg.Grow(rslt.CreatedAt)
-		if err != nil {
-			log.Fatalln("Error: pixela.CfgList.Grow", err)
-		}
 	}
 	wgSearch.Wait()
 }
