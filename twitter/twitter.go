@@ -84,19 +84,22 @@ func (cfg *CfgList) Search(user *string, count int, lastExecutedAt time.Time) []
 	return rslts
 }
 
-func GetImage(url string) *os.File {
+func GetImage(url string) (file *os.File, err error) {
 	response, err := http.Get(url)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	defer response.Body.Close()
 
 	urlSliced := strings.Split(url, "/")
 	fileName := fmt.Sprintf(urlSliced[len(urlSliced)-1])
-	file, _ := ioutil.TempFile("", fileName)
+	file, err = ioutil.TempFile("", fileName)
+	if err != nil {
+		return nil, err
+	}
 	io.Copy(file, response.Body)
 
-	return file
+	return file, err
 }
 
 func getFromSecretManager(pj string, secID string, ver string) (data []byte, err error) {

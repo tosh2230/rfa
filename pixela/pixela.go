@@ -22,32 +22,35 @@ const secretVersion string = "latest"
 func GetConfig(pj string) (cfg CfgList, err error) {
 	data, err := getFromSecretManager(pj, secretID, secretVersion)
 	if err != nil {
+		fmt.Println("getFromSecretManager")
 		return
 	}
 	err = cfg.setPixelaConfig(data)
 	if err != nil {
+		fmt.Println("setPixelaConfig")
 		return
 	}
 	return
 }
 
-func (cfg *CfgList) Grow(CreatedAt time.Time) (err error) {
+func (cfg *CfgList) Grow(CreatedAt time.Time) (resp *http.Response, err error) {
 	url := "https://pixe.la/v1/users/" + cfg.User + "/graphs/" + cfg.GraphId
 	jsonStr := `{"date":"` + CreatedAt.Format("20060102") + `","quantity":"1"}`
 
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer([]byte(jsonStr)))
 	if err != nil {
-		return err
+		return nil, err
 	}
+
 	req.Header.Set("X-USER-TOKEN", cfg.Token)
 	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
-	return err
+	return resp, err
 }
 
 func getFromSecretManager(pj string, secID string, ver string) (data []byte, err error) {
@@ -71,15 +74,15 @@ func (cfg *CfgList) setPixelaConfig(b []byte) (err error) {
 		return
 	}
 	if cfg.User == "" {
-		err = fmt.Errorf("twitter.CfgList.ConsumerKey is empty")
+		err = fmt.Errorf("pixela.CfgList.User is empty")
 		return
 	}
 	if cfg.GraphId == "" {
-		err = fmt.Errorf("twitter.CfgList.ConsumerSecret is empty")
+		err = fmt.Errorf("pixela.CfgList.GraphId is empty")
 		return
 	}
 	if cfg.Token == "" {
-		err = fmt.Errorf("twitter.CfgList.AccessToken is empty")
+		err = fmt.Errorf("pixela.CfgList.Token is empty")
 		return
 	}
 

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/tosh223/rfa/bq"
+	"github.com/tosh223/rfa/pixela"
 	"github.com/tosh223/rfa/twitter"
 	"github.com/tosh223/rfa/vision_texts"
 
@@ -51,6 +52,16 @@ func main() {
 			}
 			wgMedia.Wait()
 		}(rslt)
+
+		pxCfg, err := pixela.GetConfig(*projectID)
+		if err != nil {
+			log.Fatalln("Error: pixela.GetConfig", err)
+		}
+
+		_, err = pxCfg.Grow(rslt.CreatedAt)
+		if err != nil {
+			log.Fatalln("Error: pixela.CfgList.Grow", err)
+		}
 	}
 	wgSearch.Wait()
 }
@@ -81,7 +92,10 @@ func getLastExecutedAt(projectID string, location string, twitterId string) time
 
 func detectAndLoad(projectID string, twitterId string, createdAt time.Time, url string) {
 	fmt.Println(url)
-	file := twitter.GetImage(url)
+	file, err := twitter.GetImage(url)
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer os.Remove(file.Name())
 
 	text := vision_texts.Detect(file.Name())
@@ -95,8 +109,8 @@ func detectAndLoad(projectID string, twitterId string, createdAt time.Time, url 
 	}
 	defer csvFile.Close()
 
-	err := bq.LoadCsv(projectID, csvFile)
+	err = bq.LoadCsv(projectID, csvFile)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 }
