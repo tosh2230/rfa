@@ -59,6 +59,7 @@ func replaceLines(lines []string) []string {
 		{"スクワフット", "スクワット"},
 		{"- ", ""},
 		{" m", "m"},
+		{"Im(", "1m("},
 	}
 
 	for _, line := range lines {
@@ -149,6 +150,7 @@ func createCsvDetails(twitterId string, createdAt time.Time, url string, lines [
 	details := []*Details{}
 
 	for i, line := range lines {
+		// fmt.Println(line)
 		if strings.HasPrefix(line, "カッコ内はプレイ開始からの累計値です") {
 			break
 		} else if isExercise && !isEven &&
