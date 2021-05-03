@@ -19,9 +19,6 @@ import (
 )
 
 func main() {
-	wgSearch := new(sync.WaitGroup)
-	wgMedia := new(sync.WaitGroup)
-
 	projectID := flag.String("p", "", "gcp_project_id")
 	location := flag.String("l", "us", "bigquery_location")
 	twitterId := flag.String("u", "", "twitter_id")
@@ -37,31 +34,15 @@ func main() {
 	}
 	rslts := twCfg.Search(twitterId, size, lastExecutedAt)
 
+	wgWorker := new(sync.WaitGroup)
 	for _, rslt := range rslts {
-		// Wait Group 01: Twitter Search
-		wgSearch.Add(1)
+		wgWorker.Add(1)
 		go func(r twitter.Rslt) {
-			defer wgSearch.Done()
-			for _, url := range r.MediaUrlHttps {
-				// Wait Group 02: Image Detection & Load csv to BigQuery
-				wgMedia.Add(1)
-				go func(u string) {
-					defer wgMedia.Done()
-					detectAndLoad(*projectID, *twitterId, r.CreatedAt, u)
-				}(url)
-			}
-			wgMedia.Wait()
-
-			pxCfg, err := pixela.GetConfig(*projectID)
-			if err != nil {
-				_, err = pxCfg.Grow(r.CreatedAt)
-				if err != nil {
-					log.Fatalln("Error: pixela.CfgList.Grow", err)
-				}
-			}
+			defer wgWorker.Done()
+			worker(r, projectID, twitterId)
 		}(rslt)
 	}
-	wgSearch.Wait()
+	wgWorker.Wait()
 }
 
 func getLastExecutedAt(projectID string, location string, twitterId string) time.Time {
@@ -88,7 +69,31 @@ func getLastExecutedAt(projectID string, location string, twitterId string) time
 	return lastExecutedAt
 }
 
-func detectAndLoad(projectID string, twitterId string, createdAt time.Time, url string) {
+func worker(r twitter.Rslt, projectID *string, twitterId *string) {
+	// Detect images and load data to BigQuery
+	wgMedia := new(sync.WaitGroup)
+	for _, url := range r.MediaUrlHttps {
+		wgMedia.Add(1)
+		go func(u string) {
+			defer wgMedia.Done()
+			detecter(*projectID, *twitterId, r.CreatedAt, u)
+		}(url)
+	}
+	wgMedia.Wait()
+
+	// Pixela
+	pxCfg, err := pixela.GetConfig(*projectID)
+	if err != nil {
+		return
+	}
+
+	_, err = pxCfg.Grow(r.CreatedAt)
+	if err != nil {
+		log.Fatalln("Error: pixela.CfgList.Grow", err)
+	}
+}
+
+func detecter(projectID string, twitterId string, createdAt time.Time, url string) {
 	fmt.Println(url)
 	file, err := twitter.GetImage(url)
 	if err != nil {
