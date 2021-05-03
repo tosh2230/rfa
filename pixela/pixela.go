@@ -16,10 +16,9 @@ type CfgList struct {
 	Token   string `json:"token,omitempty"`
 }
 
-const secretID string = "rfa-pixela"
 const secretVersion string = "latest"
 
-func GetConfig(pj string) (cfg CfgList, err error) {
+func GetConfig(pj string, secretID string) (cfg CfgList, err error) {
 	data, err := getFromSecretManager(pj, secretID, secretVersion)
 	if err != nil {
 		return cfg, nil

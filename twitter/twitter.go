@@ -30,10 +30,9 @@ type Rslt struct {
 	MediaUrlHttps []string
 }
 
-const secretID string = "rfa"
 const secretVersion string = "latest"
 
-func GetConfig(pj string) (cfg CfgList, err error) {
+func GetConfig(pj string, secretID string) (cfg CfgList, err error) {
 	data, err := getFromSecretManager(pj, secretID, secretVersion)
 	if err != nil {
 		return

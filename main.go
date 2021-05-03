@@ -18,6 +18,9 @@ import (
 	"google.golang.org/api/googleapi"
 )
 
+const twitterSecretID string = "rfa"
+const pixelaSecretID string = "rfa-pixela"
+
 func main() {
 	projectID := flag.String("p", "", "gcp_project_id")
 	location := flag.String("l", "us", "bigquery_location")
@@ -28,7 +31,7 @@ func main() {
 	size, _ := strconv.Atoi(*sizeStr)
 	lastExecutedAt := getLastExecutedAt(*projectID, *location, *twitterId)
 
-	twCfg, err := twitter.GetConfig(*projectID)
+	twCfg, err := twitter.GetConfig(*projectID, twitterSecretID)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -82,7 +85,7 @@ func worker(r twitter.Rslt, projectID *string, twitterId *string) {
 	wgMedia.Wait()
 
 	// Pixela
-	pxCfg, err := pixela.GetConfig(*projectID)
+	pxCfg, err := pixela.GetConfig(*projectID, pixelaSecretID)
 	if err != nil {
 		return
 	}
