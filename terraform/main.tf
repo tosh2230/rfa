@@ -51,15 +51,26 @@ data "archive_file" "function_rfa_archive" {
   output_path = "zip/go/rfa.zip"
 }
 
-resource "google_cloudfunctions_function_iam_member" "rfa_member" {
+resource "google_cloudfunctions_function_iam_binding" "rfa_invoker" {
   project        = google_cloudfunctions_function.rfa.project
   region         = google_cloudfunctions_function.rfa.region
   cloud_function = google_cloudfunctions_function.rfa.name
   role           = "roles/cloudfunctions.invoker"
-  member         = "serviceAccount:${google_service_account.sa_functions_rfa.email}"
+  members        = ["serviceAccount:${google_service_account.sa_functions_rfa.email}"]
 }
 
-resource "google_cloud_scheduler_job" "hello_http_job" {
+resource "google_cloudfunctions_function_iam_binding" "rfa_secretAccessor" {
+  project        = google_cloudfunctions_function.rfa.project
+  region         = google_cloudfunctions_function.rfa.region
+  cloud_function = google_cloudfunctions_function.rfa.name
+  role           = "roles/secretmanager.secretAccessor"
+  members        = ["serviceAccount:${google_service_account.sa_functions_rfa.email}"]
+}
+
+##############################################
+# Cloud Scheduler
+##############################################
+resource "google_cloud_scheduler_job" "rfa_crawler" {
   project  = google_cloudfunctions_function.rfa.project
   region   = google_cloudfunctions_function.rfa.region
   name     = "rfa-crawler"
