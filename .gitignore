@@ -28,3 +28,6 @@ secret/*
 # Exclude SecretManager sample file
 !secret/twitter_example.json
 !secret/pixela_example.json
+
+terraform/*.tfvars
+terraform/*.tfbackend

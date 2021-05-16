@@ -1,10 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"strconv"
 	"sync"
@@ -21,28 +23,63 @@ import (
 const twitterSecretID string = "rfa"
 const pixelaSecretID string = "rfa-pixela"
 
+var IsHttp bool = false
+
+var Param struct {
+	ProjectID string `json:"project_id"`
+	Location  string `json:"location"`
+	TwitterID string `json:"twitter_id"`
+	Size      string `json:"size"`
+}
+
+func EntryPointHTTP(w http.ResponseWriter, r *http.Request) {
+	if err := json.NewDecoder(r.Body).Decode(&Param); err != nil {
+		log.Fatal(err)
+	}
+	if Param.ProjectID == "" {
+		log.Fatal("Parameters not found.")
+	}
+
+	IsHttp = true
+	main()
+}
+
 func main() {
-	projectID := flag.String("p", "", "gcp_project_id")
-	location := flag.String("l", "us", "bigquery_location")
-	twitterId := flag.String("u", "", "twitter_id")
-	sizeStr := flag.String("s", "1", "search_size")
-	flag.Parse()
+	var Flag struct {
+		ProjectID *string
+		Location  *string
+		TwitterID *string
+		Size      *string
+	}
 
-	size, _ := strconv.Atoi(*sizeStr)
-	lastExecutedAt := getLastExecutedAt(*projectID, *location, *twitterId)
+	if IsHttp {
+		Flag.ProjectID = &Param.ProjectID
+		Flag.Location = &Param.Location
+		Flag.TwitterID = &Param.TwitterID
+		Flag.Size = &Param.Size
+	} else {
+		Flag.ProjectID = flag.String("p", "", "gcp_project_id")
+		Flag.Location = flag.String("l", "us", "bigquery_location")
+		Flag.TwitterID = flag.String("u", "", "twitter_id")
+		Flag.Size = flag.String("s", "1", "search_size")
+		flag.Parse()
+	}
 
-	twCfg, err := twitter.GetConfig(*projectID, twitterSecretID)
+	size, _ := strconv.Atoi(*Flag.Size)
+	lastExecutedAt := getLastExecutedAt(*Flag.ProjectID, *Flag.Location, *Flag.TwitterID)
+
+	twCfg, err := twitter.GetConfig(*Flag.ProjectID, twitterSecretID)
 	if err != nil {
 		log.Fatal(err)
 	}
-	rslts := twCfg.Search(twitterId, size, lastExecutedAt)
+	rslts := twCfg.Search(Flag.TwitterID, size, lastExecutedAt)
 
 	wgWorker := new(sync.WaitGroup)
 	for _, rslt := range rslts {
 		wgWorker.Add(1)
 		go func(r twitter.Rslt) {
 			defer wgWorker.Done()
-			worker(r, projectID, twitterId)
+			worker(r, Flag.ProjectID, Flag.TwitterID)
 		}(rslt)
 	}
 	wgWorker.Wait()
