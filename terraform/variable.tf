@@ -7,27 +7,21 @@ variable "project" {
 variable "region" {
   description = "A region to use the module"
   type        = string
-  default     = "asia-northeast1"
+  default     = "us-east1"
 
   # validation {
-  #   condition     = var.region == "asia-northeast1"
-  #   error_message = "The region must be asia-northeast1."
+  #   condition     = var.region == "us-east1"
+  #   error_message = "The region must be us-east1."
   # }
 }
 
 variable "zone" {
   description = "A zone to use the module"
   type        = string
-  default     = "asia-northeast1-a"
+  default     = "us-east1-a"
 
   # validation {
-  #   condition     = contains(["asia-northeast1-a", "asia-northeast1-b", "asia-northeast1-c"], var.zone)
-  #   error_message = "The zone must be in asia-northeast1 region."
+  #   condition     = contains(["us-east1-a", "us-east1-b", "us-east1-c"], var.zone)
+  #   error_message = "The zone must be in us-east1 region."
   # }
-}
-
-variable "zip-bucket" {
-  description = "A GCS bucket for sourcecodes of cloud functions"
-  type        = string
-  default     = "${var.project}-zip-bucket"
 }

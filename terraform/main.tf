@@ -10,6 +10,10 @@ terraform {
   }
 }
 
+locals {
+  zip_bucket = "${var.project}-zip-bucket"
+}
+
 ##############################################
 # Service Account
 ##############################################
@@ -26,7 +30,7 @@ resource "google_cloudfunctions_function" "rfa" {
   name                  = "rfa"
   description           = "https://github.com/tosh223/rfa"
   runtime               = "go113"
-  source_archive_bucket = var.zip_bucket
+  source_archive_bucket = local.zip_bucket
   source_archive_object = google_storage_bucket_object.function_rfa_packages.name
   available_memory_mb   = 256
   timeout               = 30
@@ -37,13 +41,13 @@ resource "google_cloudfunctions_function" "rfa" {
 
 resource "google_storage_bucket_object" "function_rfa_packages" {
   name   = "packages/go/function_rfa.${data.archive_file.function_rfa_archive.output_md5}.zip"
-  bucket = var.zip_bucket
+  bucket = local.zip_bucket
   source = data.archive_file.function_rfa_archive.output_path
 }
 
 data "archive_file" "function_rfa_archive" {
   type        = "zip"
-  source_dir  = ".."
+  source_dir  = "../src"
   output_path = "zip/go/rfa.zip"
 }
 
@@ -53,6 +57,21 @@ resource "google_cloudfunctions_function_iam_member" "rfa_member" {
   cloud_function = google_cloudfunctions_function.rfa.name
   role           = "roles/cloudfunctions.invoker"
   member         = "serviceAccount:${google_service_account.sa_functions_rfa.email}"
+}
+
+resource "google_cloud_scheduler_job" "hello_http_job" {
+  project  = google_cloudfunctions_function.rfa.project
+  region   = google_cloudfunctions_function.rfa.region
+  name     = "rfa-crawler"
+  schedule = "30 * * * *"
+  http_target {
+    uri         = google_cloudfunctions_function.rfa.https_trigger_url
+    http_method = "POST"
+    body        = base64encode("{\"name\":\"HTTP\"}")
+    oidc_token {
+      service_account_email = google_service_account.sa_functions_rfa.email
+    }
+  }
 }
 
 ##############################################

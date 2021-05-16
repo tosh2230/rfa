@@ -29,5 +29,7 @@ secret/*
 !secret/twitter_example.json
 !secret/pixela_example.json
 
+terraform/.terraform/
+terraform/zip/
 terraform/*.tfvars
 terraform/*.tfbackend
