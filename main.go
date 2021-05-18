@@ -28,21 +28,37 @@ func main() {
 	sizeStr := flag.String("s", "1", "search_size")
 	flag.Parse()
 
-	size, _ := strconv.Atoi(*sizeStr)
-	lastExecutedAt := getLastExecutedAt(*projectID, *location, *twitterId)
+	var rfa Rfa
+	rfa.ProjectID = *projectID
+	rfa.Location = *location
+	rfa.TwitterID = *twitterId
+	rfa.Size = *sizeStr
+	rfa.Search()
+}
 
-	twCfg, err := twitter.GetConfig(*projectID, twitterSecretID)
+type Rfa struct {
+	ProjectID string `json:"project_id"`
+	Location  string `json:"location"`
+	TwitterID string `json:"twitter_id"`
+	Size      string `json:"size"`
+}
+
+func (rfa *Rfa) Search() {
+	size, _ := strconv.Atoi(rfa.Size)
+	lastExecutedAt := getLastExecutedAt(rfa.ProjectID, rfa.Location, rfa.TwitterID)
+
+	twCfg, err := twitter.GetConfig(rfa.ProjectID, twitterSecretID)
 	if err != nil {
 		log.Fatal(err)
 	}
-	rslts := twCfg.Search(twitterId, size, lastExecutedAt)
+	rslts := twCfg.Search(&rfa.TwitterID, size, lastExecutedAt)
 
 	wgWorker := new(sync.WaitGroup)
 	for _, rslt := range rslts {
 		wgWorker.Add(1)
 		go func(r twitter.Rslt) {
 			defer wgWorker.Done()
-			worker(r, projectID, twitterId)
+			worker(r, &rfa.ProjectID, &rfa.TwitterID)
 		}(rslt)
 	}
 	wgWorker.Wait()
