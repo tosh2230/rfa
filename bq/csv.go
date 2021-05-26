@@ -13,6 +13,8 @@ import (
 	"github.com/gocarina/gocsv"
 )
 
+var RQuantity *regexp.Regexp = regexp.MustCompile(`^[0-9]+`)
+
 type Summary struct {
 	TwitterId            string        `json:"twitter_id" csv:"twitter_id"`
 	CreatedAt            time.Time     `json:"created_at" csv:"created_at"`
@@ -47,6 +49,19 @@ func CreateCsv(twitterId string, createdAt time.Time, url string, text string) *
 	}
 
 	return csvFile
+}
+
+func replaceTimeUnit(strTotalTime string) string {
+	replaceTimeUnit := [][]string{
+		{"時", "h"},
+		{"分", "m"},
+		{"秒", "s"},
+	}
+
+	for _, unit := range replaceTimeUnit {
+		strTotalTime = strings.ReplaceAll(strTotalTime, unit[0], unit[1])
+	}
+	return strTotalTime
 }
 
 func replaceLines(lines []string) []string {
@@ -88,59 +103,52 @@ func createCsvSummary(twitterId string, createdAt time.Time, url string, lines [
 
 func setSummary(twitterId string, createdAt time.Time, url string, lines []string) []*Summary {
 	var summary []*Summary
-	var totalCaloriesBurned float64 = 0
-	var totalDistanceRun float64 = 0
-
-	replaceTimeUnit := [][]string{
-		{"時", "h"},
-		{"分", "m"},
-		{"秒", "s"},
-	}
-
-	rQuantity := regexp.MustCompile(`^[0-9.]+`)
 
 	for i, line := range lines {
-		if rQuantity.MatchString(line) {
-			strTotalTime := line
-			for _, unit := range replaceTimeUnit {
-				strTotalTime = strings.ReplaceAll(strTotalTime, unit[0], unit[1])
-			}
-			totalTimeExcercising, _ := time.ParseDuration(strTotalTime)
-
-			if strings.HasSuffix(lines[i+2], "kcal") {
-				totalCaloriesSlice := rQuantity.FindAllString(lines[i+2], 1)
-				if len(totalCaloriesSlice) > 0 {
-					totalCaloriesBurned, _ = strconv.ParseFloat(totalCaloriesSlice[0], 64)
-				}
-
-				totalDistanceRunSlice := rQuantity.FindAllString(lines[i+4], 1)
-				if len(totalDistanceRunSlice) > 0 {
-					totalDistanceRun, _ = strconv.ParseFloat(totalDistanceRunSlice[0], 64)
-				}
-			} else {
-				// 4分31秒
-				// 合計活動時間
-				// 13.
-				// 合計消費力ロリー
-				// 05kcal
-				// 合計走行距離
-				totalCaloriesInt := rQuantity.FindAllString(lines[i+2], 1)[0]
-				totalCaloriesFract := rQuantity.FindAllString(lines[i+4], 1)[0]
-				totalCaloriesBurned, _ = strconv.ParseFloat(totalCaloriesInt+totalCaloriesFract, 64)
-			}
-
-			summary = append(summary, &Summary{
-				TwitterId:            twitterId,
-				CreatedAt:            createdAt,
-				ImageUrl:             url,
-				TotalTimeExcercising: totalTimeExcercising,
-				TotalCaloriesBurned:  totalCaloriesBurned,
-				TotalDistanceRun:     totalDistanceRun,
-			})
-			break
+		if RQuantity.MatchString(line) {
+			return makeSummary(twitterId, createdAt, url, lines, i)
 		}
 	}
 	return summary
+}
+
+func makeSummary(twitterId string, createdAt time.Time, url string, lines []string, i int) []*Summary {
+	var summary []*Summary
+	var totalCaloriesBurned float64 = 0
+	var totalDistanceRun float64 = 0
+
+	totalTimeExcercising, _ := time.ParseDuration(replaceTimeUnit(lines[i]))
+
+	if strings.HasSuffix(lines[i+2], "kcal") {
+		totalCaloriesSlice := RQuantity.FindAllString(lines[i+2], 1)
+		if len(totalCaloriesSlice) > 0 {
+			totalCaloriesBurned, _ = strconv.ParseFloat(totalCaloriesSlice[0], 64)
+		}
+
+		totalDistanceRunSlice := RQuantity.FindAllString(lines[i+4], 1)
+		if len(totalDistanceRunSlice) > 0 {
+			totalDistanceRun, _ = strconv.ParseFloat(totalDistanceRunSlice[0], 64)
+		}
+	} else {
+		// 4分31秒
+		// 合計活動時間
+		// 13.
+		// 合計消費力ロリー
+		// 05kcal
+		// 合計走行距離
+		totalCaloriesInt := RQuantity.FindAllString(lines[i+2], 1)[0]
+		totalCaloriesFract := RQuantity.FindAllString(lines[i+4], 1)[0]
+		totalCaloriesBurned, _ = strconv.ParseFloat(totalCaloriesInt+totalCaloriesFract, 64)
+	}
+
+	return append(summary, &Summary{
+		TwitterId:            twitterId,
+		CreatedAt:            createdAt,
+		ImageUrl:             url,
+		TotalTimeExcercising: totalTimeExcercising,
+		TotalCaloriesBurned:  totalCaloriesBurned,
+		TotalDistanceRun:     totalDistanceRun,
+	})
 }
 
 func createCsvDetails(twitterId string, createdAt time.Time, url string, lines []string) *os.File {
@@ -182,10 +190,9 @@ func createCsvDetails(twitterId string, createdAt time.Time, url string, lines [
 }
 
 func setDetails(details []*Details, twitterId string, createdAt time.Time, url string, nameLine string, quantityLine string) []*Details {
-	rQuantity := regexp.MustCompile(`^[0-9]+`)
 	rTotalQuantity := regexp.MustCompile(`\([0-9]+`)
 
-	quantity, _ := strconv.Atoi(rQuantity.FindAllString(quantityLine, 1)[0])
+	quantity, _ := strconv.Atoi(RQuantity.FindAllString(quantityLine, 1)[0])
 	strTotalQuantity := rTotalQuantity.FindAllString(quantityLine, 1)
 	totalQuantity, _ := strconv.Atoi(strings.Trim(strTotalQuantity[0], "("))
 	details = append(details, &Details{
