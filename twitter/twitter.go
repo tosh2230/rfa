@@ -44,11 +44,10 @@ func GetConfig(pj string, secretID string) (cfg CfgList, err error) {
 	return
 }
 
-func (cfg *CfgList) Search(user *string, count int, lastExecutedAt time.Time) []Rslt {
+func (cfg *CfgList) Search(user *string, count int, lastExecutedAt time.Time) (rslts []Rslt, err error) {
 	const hashTag string = "RingFitAdventure"
 	const filterIn string = "twimg"
 	// const filterEx string = "retweets"
-	var rslts []Rslt
 	var keyword string
 
 	anaconda.SetConsumerKey(cfg.ConsumerKey)
@@ -67,12 +66,10 @@ func (cfg *CfgList) Search(user *string, count int, lastExecutedAt time.Time) []
 	v := url.Values{}
 	v.Set("count", strconv.Itoa(count))
 
-	fmt.Println(keyword)
 	searchResult, err := api.GetSearch(keyword, v)
 	if err != nil {
-		fmt.Println(err)
+		return
 	}
-	fmt.Println(searchResult)
 
 	for _, tweet := range searchResult.Statuses {
 		var urls []string
@@ -88,7 +85,7 @@ func (cfg *CfgList) Search(user *string, count int, lastExecutedAt time.Time) []
 		rslts = append(rslts, rslt)
 	}
 
-	return rslts
+	return
 }
 
 func GetImage(url string) (file *os.File, err error) {

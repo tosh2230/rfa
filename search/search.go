@@ -34,7 +34,11 @@ func (rfa *Rfa) Search() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	rslts := twCfg.Search(&rfa.TwitterID, size, lastExecutedAt)
+
+	rslts, err := twCfg.Search(&rfa.TwitterID, size, lastExecutedAt)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	wgWorker := new(sync.WaitGroup)
 	for _, rslt := range rslts {
