@@ -47,7 +47,7 @@ func GetConfig(pj string, secretID string) (cfg CfgList, err error) {
 func (cfg *CfgList) Search(user *string, count int, lastExecutedAt time.Time) []Rslt {
 	const hashTag string = "RingFitAdventure"
 	const filterIn string = "twimg"
-	const filterEx string = "retweets"
+	// const filterEx string = "retweets"
 	var rslts []Rslt
 	var keyword string
 
@@ -56,16 +56,24 @@ func (cfg *CfgList) Search(user *string, count int, lastExecutedAt time.Time) []
 	api := anaconda.NewTwitterApi(cfg.AccessToken, cfg.AccessTokenSecret)
 
 	if lastExecutedAt == (time.Time{}) {
-		keyword = fmt.Sprintf("from:%s #%s filter:%s -filter:%s", *user, hashTag, filterIn, filterEx)
+		// keyword = fmt.Sprintf("from:%s #%s filter:%s -filter:%s", *user, hashTag, filterIn, filterEx)
+		keyword = fmt.Sprintf("from:%s #%s filter:%s", *user, hashTag, filterIn)
 	} else {
 		searchTime := lastExecutedAt.Add(1 * time.Second)
-		keyword = fmt.Sprintf("from:%s #%s filter:%s -filter:%s since:%s", *user, hashTag, filterIn, filterEx, searchTime.Format("2006-01-02_15:04:05_MST"))
+		// keyword = fmt.Sprintf("from:%s #%s filter:%s -filter:%s since:%s", *user, hashTag, filterIn, filterEx, searchTime.Format("2006-01-02_15:04:05_MST"))
+		keyword = fmt.Sprintf("from:%s #%s filter:%s since:%s", *user, hashTag, filterIn, searchTime.Format("2006-01-02_15:04:05_MST"))
 	}
 
 	v := url.Values{}
 	v.Set("count", strconv.Itoa(count))
 
-	searchResult, _ := api.GetSearch(keyword, v)
+	fmt.Println(keyword)
+	searchResult, err := api.GetSearch(keyword, v)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(searchResult)
+
 	for _, tweet := range searchResult.Statuses {
 		var urls []string
 		for _, medium := range tweet.ExtendedEntities.Media {
