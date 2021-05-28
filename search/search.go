@@ -112,11 +112,10 @@ func detecter(projectID string, twitterId string, createdAt time.Time, url strin
 		return
 	}
 
-	csvFile := bq.CreateCsv(twitterId, createdAt, url, text)
-	if csvFile == nil {
-		return
+	csvFile, err := bq.CreateCsv(twitterId, createdAt, url, text)
+	if err == nil {
+		log.Fatal(err)
 	}
-	defer csvFile.Close()
 
 	err = bq.LoadCsv(projectID, csvFile)
 	if err != nil {

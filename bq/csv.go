@@ -33,22 +33,20 @@ type Details struct {
 	TotalQuantity int       `json:"total_quantity" csv:"total_quantity"`
 }
 
-func CreateCsv(twitterId string, createdAt time.Time, url string, text string) *os.File {
-	var csvFile *os.File
+func CreateCsv(twitterId string, createdAt time.Time, url string, text string) (csvFile *os.File, err error) {
 	lines := replaceLines(strings.Split(text, "\n"))
 	lastWords := lines[len(lines)-2]
 
 	switch {
 	// summary
 	case strings.HasSuffix(lastWords, "次へ"), strings.HasSuffix(lastWords, "Next"):
-		csvFile = createCsvSummary(twitterId, createdAt, url, lines)
+		csvFile, err = createCsvSummary(twitterId, createdAt, url, lines)
 
 	// details
 	case strings.HasSuffix(lastWords, "とじる"), strings.HasSuffix(lastWords, "Close"):
-		csvFile = createCsvDetails(twitterId, createdAt, url, lines)
+		csvFile, err = createCsvDetails(twitterId, createdAt, url, lines)
 	}
-
-	return csvFile
+	return
 }
 
 func replaceTimeUnit(strTotalTime string) string {
@@ -64,9 +62,7 @@ func replaceTimeUnit(strTotalTime string) string {
 	return strTotalTime
 }
 
-func replaceLines(lines []string) []string {
-	var rLines []string
-
+func replaceLines(lines []string) (rLines []string) {
 	replaceStr2d := [][]string{
 		{"Om(", "0m("},
 		{"0(", "回("},
@@ -85,35 +81,34 @@ func replaceLines(lines []string) []string {
 		rLineSplited := strings.Split(rLine, " ")
 		rLines = append(rLines, rLineSplited...)
 	}
-	return rLines
+	return
 }
 
-func createCsvSummary(twitterId string, createdAt time.Time, url string, lines []string) *os.File {
+func createCsvSummary(twitterId string, createdAt time.Time, url string, lines []string) (csvFile *os.File, err error) {
 	prefix := strings.ReplaceAll(filepath.Base(url), filepath.Ext(url), "")
 	csvName := fmt.Sprintf("summary_%s.csv", prefix)
-	csvFile, err := ioutil.TempFile("", csvName)
+	csvFile, err = ioutil.TempFile("", csvName)
+	defer csvFile.Close()
 	if err != nil {
-		panic(err)
+		return
 	}
 
 	summary := setSummary(twitterId, createdAt, url, lines)
 	gocsv.MarshalFile(&summary, csvFile)
-	return csvFile
+	return
 }
 
-func setSummary(twitterId string, createdAt time.Time, url string, lines []string) []*Summary {
-	var summary []*Summary
-
+func setSummary(twitterId string, createdAt time.Time, url string, lines []string) (summary []*Summary) {
 	for i, line := range lines {
 		if RQuantity.MatchString(line) {
-			return makeSummary(twitterId, createdAt, url, lines, i)
+			summary = makeSummary(twitterId, createdAt, url, lines, i)
+			break
 		}
 	}
-	return summary
+	return
 }
 
-func makeSummary(twitterId string, createdAt time.Time, url string, lines []string, i int) []*Summary {
-	var summary []*Summary
+func makeSummary(twitterId string, createdAt time.Time, url string, lines []string, i int) (summary []*Summary) {
 	var totalCaloriesBurned float64 = 0
 	var totalDistanceRun float64 = 0
 
@@ -151,7 +146,7 @@ func makeSummary(twitterId string, createdAt time.Time, url string, lines []stri
 	})
 }
 
-func createCsvDetails(twitterId string, createdAt time.Time, url string, lines []string) *os.File {
+func createCsvDetails(twitterId string, createdAt time.Time, url string, lines []string) (csvFile *os.File, err error) {
 	var isEven bool = (len(lines)%2 == 0)
 	var isExercise bool = false
 	rExercise := regexp.MustCompile(`^[^0-9]+`)
@@ -180,13 +175,14 @@ func createCsvDetails(twitterId string, createdAt time.Time, url string, lines [
 
 	prefix := strings.ReplaceAll(filepath.Base(url), filepath.Ext(url), "")
 	csvName := fmt.Sprintf("details_%s.csv", prefix)
-	csvFile, err := ioutil.TempFile("", csvName)
+	csvFile, err = ioutil.TempFile("", csvName)
 	if err != nil {
-		panic(err)
+		return
 	}
+	defer csvFile.Close()
 
 	gocsv.MarshalFile(&details, csvFile)
-	return csvFile
+	return
 }
 
 func setDetails(details []*Details, twitterId string, createdAt time.Time, url string, nameLine string, quantityLine string) []*Details {
