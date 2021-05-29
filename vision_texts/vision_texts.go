@@ -43,7 +43,9 @@ func Detect(filename string) string {
 	result := annotations[0].Description
 	if contains(strings.Split(result, "\n"), "本日の運動結果") ||
 		contains(strings.Split(result, "\n"), "Today's Results") {
-		// fmt.Println(result)
+
+		fmt.Printf("Detect results: %s\n", filename)
+		fmt.Println(result)
 		return result
 	}
 

@@ -70,6 +70,8 @@ func (cfg *CfgList) Search(user *string, count int, lastExecutedAt time.Time) (r
 	if err != nil {
 		return
 	}
+	fmt.Println("Search results:")
+	fmt.Println(searchResult)
 
 	for _, tweet := range searchResult.Statuses {
 		var urls []string

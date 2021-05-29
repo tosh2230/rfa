@@ -15,6 +15,12 @@ import (
 
 var RQuantity *regexp.Regexp = regexp.MustCompile(`^[0-9]+`)
 
+type TweetInfo struct {
+	TwitterId string    `json:"twitter_id" csv:"twitter_id"`
+	CreatedAt time.Time `json:"created_at" csv:"created_at"`
+	ImageUrl  string    `json:"image_url" csv:"image_url"`
+}
+
 type Summary struct {
 	TwitterId            string        `json:"twitter_id" csv:"twitter_id"`
 	CreatedAt            time.Time     `json:"created_at" csv:"created_at"`
@@ -33,96 +39,76 @@ type Details struct {
 	TotalQuantity int       `json:"total_quantity" csv:"total_quantity"`
 }
 
-func CreateCsv(twitterId string, createdAt time.Time, url string, text string) (csvFile *os.File, err error) {
+func (tweetInfo *TweetInfo) CreateCsv(text string) (csvFile *os.File, err error) {
 	lines := replaceLines(strings.Split(text, "\n"))
 	lastWords := lines[len(lines)-2]
 
 	switch {
 	// summary
 	case strings.HasSuffix(lastWords, "次へ"), strings.HasSuffix(lastWords, "Next"):
-		csvFile, err = createCsvSummary(twitterId, createdAt, url, lines)
+		csvFile, err = tweetInfo.createCsvSummary(lines)
 
 	// details
 	case strings.HasSuffix(lastWords, "とじる"), strings.HasSuffix(lastWords, "Close"):
-		csvFile, err = createCsvDetails(twitterId, createdAt, url, lines)
+		csvFile, err = createCsvDetails(tweetInfo.TwitterId, tweetInfo.CreatedAt, tweetInfo.ImageUrl, lines)
 	}
 	return
 }
 
-func replaceTimeUnit(strTotalTime string) string {
-	replaceTimeUnit := [][]string{
-		{"時", "h"},
-		{"分", "m"},
-		{"秒", "s"},
-	}
+func (tweetInfo *TweetInfo) createCsvSummary(lines []string) (csvFile *os.File, err error) {
+	var summary []*Summary
 
-	for _, unit := range replaceTimeUnit {
-		strTotalTime = strings.ReplaceAll(strTotalTime, unit[0], unit[1])
-	}
-	return strTotalTime
-}
-
-func replaceLines(lines []string) (rLines []string) {
-	replaceStr2d := [][]string{
-		{"Om(", "0m("},
-		{"0(", "回("},
-		{"押しにみ", "押しこみ"},
-		{"スクワフット", "スクワット"},
-		{"- ", ""},
-		{" m", "m"},
-		{"Im(", "1m("},
-	}
-
-	for _, line := range lines {
-		rLine := strings.TrimSpace(strings.Trim(line, "*"))
-		for _, replaceStr := range replaceStr2d {
-			rLine = strings.Replace(rLine, replaceStr[0], replaceStr[1], 1)
+	for i, line := range lines {
+		// fmt.Println(line)
+		if RQuantity.MatchString(line) {
+			summary, err = tweetInfo.setSummary(lines, i)
+			if err != nil {
+				return
+			}
+			break
 		}
-		rLineSplited := strings.Split(rLine, " ")
-		rLines = append(rLines, rLineSplited...)
 	}
-	return
-}
 
-func createCsvSummary(twitterId string, createdAt time.Time, url string, lines []string) (csvFile *os.File, err error) {
-	prefix := strings.ReplaceAll(filepath.Base(url), filepath.Ext(url), "")
+	prefix := strings.ReplaceAll(
+		filepath.Base(tweetInfo.ImageUrl),
+		filepath.Ext(tweetInfo.ImageUrl),
+		"",
+	)
 	csvName := fmt.Sprintf("summary_%s.csv", prefix)
 	csvFile, err = ioutil.TempFile("", csvName)
-	defer csvFile.Close()
 	if err != nil {
 		return
 	}
+	defer csvFile.Close()
 
-	summary := setSummary(twitterId, createdAt, url, lines)
 	gocsv.MarshalFile(&summary, csvFile)
 	return
 }
 
-func setSummary(twitterId string, createdAt time.Time, url string, lines []string) (summary []*Summary) {
-	for i, line := range lines {
-		if RQuantity.MatchString(line) {
-			summary = makeSummary(twitterId, createdAt, url, lines, i)
-			break
-		}
-	}
-	return
-}
-
-func makeSummary(twitterId string, createdAt time.Time, url string, lines []string, i int) (summary []*Summary) {
+func (tweetInfo *TweetInfo) setSummary(lines []string, i int) (summary []*Summary, err error) {
 	var totalCaloriesBurned float64 = 0
 	var totalDistanceRun float64 = 0
 
-	totalTimeExcercising, _ := time.ParseDuration(replaceTimeUnit(lines[i]))
+	totalTimeExcercising, err := time.ParseDuration(replaceTimeUnit(lines[i]))
+	if err != nil {
+		return
+	}
 
 	if strings.HasSuffix(lines[i+2], "kcal") {
 		totalCaloriesSlice := RQuantity.FindAllString(lines[i+2], 1)
 		if len(totalCaloriesSlice) > 0 {
-			totalCaloriesBurned, _ = strconv.ParseFloat(totalCaloriesSlice[0], 64)
+			totalCaloriesBurned, err = strconv.ParseFloat(totalCaloriesSlice[0], 64)
+			if err != nil {
+				return
+			}
 		}
 
 		totalDistanceRunSlice := RQuantity.FindAllString(lines[i+4], 1)
 		if len(totalDistanceRunSlice) > 0 {
-			totalDistanceRun, _ = strconv.ParseFloat(totalDistanceRunSlice[0], 64)
+			totalDistanceRun, err = strconv.ParseFloat(totalDistanceRunSlice[0], 64)
+			if err != nil {
+				return
+			}
 		}
 	} else {
 		// 4分31秒
@@ -133,17 +119,21 @@ func makeSummary(twitterId string, createdAt time.Time, url string, lines []stri
 		// 合計走行距離
 		totalCaloriesInt := RQuantity.FindAllString(lines[i+2], 1)[0]
 		totalCaloriesFract := RQuantity.FindAllString(lines[i+4], 1)[0]
-		totalCaloriesBurned, _ = strconv.ParseFloat(totalCaloriesInt+totalCaloriesFract, 64)
+		totalCaloriesBurned, err = strconv.ParseFloat(totalCaloriesInt+totalCaloriesFract, 64)
+		if err != nil {
+			return
+		}
 	}
 
-	return append(summary, &Summary{
-		TwitterId:            twitterId,
-		CreatedAt:            createdAt,
-		ImageUrl:             url,
+	summary = append(summary, &Summary{
+		TwitterId:            tweetInfo.TwitterId,
+		CreatedAt:            tweetInfo.CreatedAt,
+		ImageUrl:             tweetInfo.ImageUrl,
 		TotalTimeExcercising: totalTimeExcercising,
 		TotalCaloriesBurned:  totalCaloriesBurned,
 		TotalDistanceRun:     totalDistanceRun,
 	})
+	return
 }
 
 func createCsvDetails(twitterId string, createdAt time.Time, url string, lines []string) (csvFile *os.File, err error) {
@@ -201,4 +191,39 @@ func setDetails(details []*Details, twitterId string, createdAt time.Time, url s
 	})
 
 	return details
+}
+
+func replaceTimeUnit(strTotalTime string) string {
+	replaceTimeUnit := [][]string{
+		{"時", "h"},
+		{"分", "m"},
+		{"秒", "s"},
+	}
+
+	for _, unit := range replaceTimeUnit {
+		strTotalTime = strings.ReplaceAll(strTotalTime, unit[0], unit[1])
+	}
+	return strTotalTime
+}
+
+func replaceLines(lines []string) (rLines []string) {
+	replaceStr2d := [][]string{
+		{"Om(", "0m("},
+		{"0(", "回("},
+		{"押しにみ", "押しこみ"},
+		{"スクワフット", "スクワット"},
+		{"- ", ""},
+		{" m", "m"},
+		{"Im(", "1m("},
+	}
+
+	for _, line := range lines {
+		rLine := strings.TrimSpace(strings.Trim(line, "*"))
+		for _, replaceStr := range replaceStr2d {
+			rLine = strings.Replace(rLine, replaceStr[0], replaceStr[1], 1)
+		}
+		rLineSplited := strings.Split(rLine, " ")
+		rLines = append(rLines, rLineSplited...)
+	}
+	return
 }

@@ -112,8 +112,13 @@ func detecter(projectID string, twitterId string, createdAt time.Time, url strin
 		return
 	}
 
-	csvFile, err := bq.CreateCsv(twitterId, createdAt, url, text)
-	if err == nil {
+	tweetInfo := bq.TweetInfo{
+		TwitterId: twitterId,
+		CreatedAt: createdAt,
+		ImageUrl:  url,
+	}
+	csvFile, err := tweetInfo.CreateCsv(text)
+	if err != nil {
 		log.Fatal(err)
 	}
 
