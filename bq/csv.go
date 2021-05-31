@@ -50,7 +50,7 @@ func (tweetInfo *TweetInfo) CreateCsv(text string) (csvFile *os.File, err error)
 
 	// details
 	case strings.HasSuffix(lastWords, "とじる"), strings.HasSuffix(lastWords, "Close"):
-		csvFile, err = createCsvDetails(tweetInfo.TwitterId, tweetInfo.CreatedAt, tweetInfo.ImageUrl, lines)
+		csvFile, err = tweetInfo.createCsvDetails(lines)
 	}
 	return
 }
@@ -136,7 +136,7 @@ func (tweetInfo *TweetInfo) setSummary(lines []string, i int) (summary []*Summar
 	return
 }
 
-func createCsvDetails(twitterId string, createdAt time.Time, url string, lines []string) (csvFile *os.File, err error) {
+func (tweetInfo *TweetInfo) createCsvDetails(lines []string) (csvFile *os.File, err error) {
 	var isEven bool = (len(lines)%2 == 0)
 	var isExercise bool = false
 	rExercise := regexp.MustCompile(`^[^0-9]+`)
@@ -149,12 +149,12 @@ func createCsvDetails(twitterId string, createdAt time.Time, url string, lines [
 		} else if isExercise && !isEven &&
 			rExercise.MatchString(line) &&
 			rExercise.MatchString(lines[i+1]) {
-			details = setDetails(details, twitterId, createdAt, url, line, lines[i+4])
-			details = setDetails(details, twitterId, createdAt, url, lines[i+1], lines[i+3])
-			details = setDetails(details, twitterId, createdAt, url, lines[i+2], lines[i+5])
+			tweetInfo.setDetails(&details, line, lines[i+4])
+			tweetInfo.setDetails(&details, lines[i+1], lines[i+3])
+			tweetInfo.setDetails(&details, lines[i+2], lines[i+5])
 			break
 		} else if isExercise && rExercise.MatchString(line) {
-			details = setDetails(details, twitterId, createdAt, url, line, lines[i+1])
+			tweetInfo.setDetails(&details, line, lines[i+1])
 		}
 
 		if strings.HasPrefix(line, "R画面を撮影する") ||
@@ -163,7 +163,7 @@ func createCsvDetails(twitterId string, createdAt time.Time, url string, lines [
 		}
 	}
 
-	prefix := strings.ReplaceAll(filepath.Base(url), filepath.Ext(url), "")
+	prefix := strings.ReplaceAll(filepath.Base(tweetInfo.ImageUrl), filepath.Ext(tweetInfo.ImageUrl), "")
 	csvName := fmt.Sprintf("details_%s.csv", prefix)
 	csvFile, err = ioutil.TempFile("", csvName)
 	if err != nil {
@@ -175,22 +175,20 @@ func createCsvDetails(twitterId string, createdAt time.Time, url string, lines [
 	return
 }
 
-func setDetails(details []*Details, twitterId string, createdAt time.Time, url string, nameLine string, quantityLine string) []*Details {
+func (tweetInfo *TweetInfo) setDetails(details *[]*Details, nameLine string, quantityLine string) {
 	rTotalQuantity := regexp.MustCompile(`\([0-9]+`)
 
 	quantity, _ := strconv.Atoi(RQuantity.FindAllString(quantityLine, 1)[0])
 	strTotalQuantity := rTotalQuantity.FindAllString(quantityLine, 1)
 	totalQuantity, _ := strconv.Atoi(strings.Trim(strTotalQuantity[0], "("))
-	details = append(details, &Details{
-		TwitterId:     twitterId,
-		CreatedAt:     createdAt,
-		ImageUrl:      url,
+	*details = append(*details, &Details{
+		TwitterId:     tweetInfo.TwitterId,
+		CreatedAt:     tweetInfo.CreatedAt,
+		ImageUrl:      tweetInfo.ImageUrl,
 		ExerciseName:  nameLine,
 		Quantity:      quantity,
 		TotalQuantity: totalQuantity,
 	})
-
-	return details
 }
 
 func replaceTimeUnit(strTotalTime string) string {
