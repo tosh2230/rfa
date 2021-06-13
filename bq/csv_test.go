@@ -6,33 +6,37 @@ import (
 	"github.com/pkg/errors"
 )
 
+func TestReplaceTimeUnit(t *testing.T) {
+	in := "9分26秒"
+	want := "9m26s"
+	out := replaceTimeUnit(in)
+	if out != want {
+		err := errors.Errorf("Fail.\n[out ]: %s\n[want]: %s", out, want)
+		t.Error(err)
+	}
+}
+
 func TestReplaceLines(t *testing.T) {
-	before := []string{
-		"ジョギング",
+	in_string := []string{
 		"Om(19809m)",
-		"おなか押しにみひねり",
 		"320(486回)",
+		"おなか押しにみひねり",
 		"バンザイスクワフット",
 		"- 5回(5回)",
-		"モモあげ",
-		"Im(801m)",
-		"ジョギング",
 		"2 m(19809m)",
+		"Im(801m)",
 	}
 	wants := []string{
-		"ジョギング",
 		"0m(19809m)",
-		"おなか押しこみひねり",
 		"32回(486回)",
+		"おなか押しこみひねり",
 		"バンザイスクワット",
 		"5回(5回)",
-		"モモあげ",
-		"1m(801m)",
-		"ジョギング",
 		"2m(19809m)",
+		"1m(801m)",
 	}
-	after := replaceLines(before)
-	for idx, out := range after {
+	out_string := replaceLines(in_string)
+	for idx, out := range out_string {
 		want := wants[idx]
 		if out != want {
 			err := errors.Errorf("Fail.\n[out ]: %s\n[want]: %s", out, want)
