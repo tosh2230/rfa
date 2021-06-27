@@ -13,7 +13,7 @@ Please see [go.mod](https://github.com/tosh223/rfa/blob/main/go.mod).
 
 ## Usage
 
-- Regist Twitter developer secrets to Cloud Secret Manager as `rfa`
+- Register Twitter developer secrets to Cloud Secret Manager as `rfa`
 
     ```sh
     $ cat ./secret/twitter_example.json
