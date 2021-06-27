@@ -23,8 +23,9 @@ Please see [go.mod](https://github.com/tosh223/rfa/blob/main/go.mod).
         "access_token": "****************",
         "access_token_secret": "****************"
     }
+    $ cp ./secret/twitter{_example,}.json  # then replace the values with your actual ones.
 
-    $ gcloud secrets create rfa --data-file=./secret/twitter_example.json
+    $ gcloud secrets create rfa --data-file=./secret/twitter.json
     ```
 
 - Create `rfa` dataset in Google BigQuery
