@@ -11,6 +11,7 @@ func main() {
 	location := flag.String("l", "us", "bigquery_location")
 	twitterId := flag.String("u", "", "twitter_id")
 	sizeStr := flag.String("s", "1", "search_size")
+	noDetail := flag.Bool("no-detail", false, "no_detail")
 	flag.Parse()
 
 	var rfa search.Rfa
@@ -18,5 +19,5 @@ func main() {
 	rfa.Location = *location
 	rfa.TwitterID = *twitterId
 	rfa.Size = *sizeStr
-	rfa.Search()
+	rfa.Search(search.NoDetail(*noDetail))
 }
