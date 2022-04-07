@@ -11,7 +11,7 @@ Detect text in screenshots of "Ring Fit Adventure for Nintendo Switch" posted on
 The dependent modules are managed by Go Modules.
 Please see [go.mod](https://github.com/tosh223/rfa/blob/main/go.mod).
 
-## Usage
+## Preparation
 
 - Register Twitter developer secrets to Cloud Secret Manager as `rfa`
 
@@ -34,20 +34,39 @@ Please see [go.mod](https://github.com/tosh223/rfa/blob/main/go.mod).
     $ bq mk -d rfa
     ```
 
-## Arguments
+## Usage
+### CLI
+
+#### Build
+```sh
+# build
+go build ./cmd/rfa
+
+# run
+./rfa --help
+Usage:
+  rfa [flags]
+
+  Flags:
+    -h, --help                 help for rfa
+    -l, --location string      BigQuery location (default "us")
+    -p, --project-id string    GCP Project ID
+    -s, --search-size string   search size (default "1")
+    -u, --twitter-id string    Twitter ID
+```
+
+### Web App
+For CloudRun
 
 ```sh
-$ ./rfa --help
-Usage of ./rfa:
-  -l string
-        bigquery_location (default "us")
-  -p string
-        gcp_project_id
-  -s string
-        search_size (default "1")
-  -u string
-        twitter_id
+# build and serve
+go build ./cmd/cloudrun
+./cloudrun
+
+# access
+curl "http://localhost:8080/?projectId=<project-id>&twitterId=<username>&location=<bigquery-location>&size=<search-size>"
 ```
+
 
 ## Test
 
