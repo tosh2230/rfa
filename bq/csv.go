@@ -14,7 +14,7 @@ import (
 	"github.com/gocarina/gocsv"
 )
 
-var RQuantity *regexp.Regexp = regexp.MustCompile(`^[0-9]+`)
+var RQuantity *regexp.Regexp = regexp.MustCompile(`^[0-9\.]+`)
 
 type TweetInfo struct {
 	TwitterId string    `json:"twitter_id" csv:"twitter_id"`
