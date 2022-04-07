@@ -3,6 +3,7 @@ package bq
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -39,7 +40,7 @@ type Details struct {
 	TotalQuantity int       `json:"total_quantity" csv:"total_quantity"`
 }
 
-func (tweetInfo *TweetInfo) CreateCsv(text string, noDetail bool) (csvFile *os.File, err error) {
+func (tweetInfo *TweetInfo) CreateCsv(text string) (csvFile *os.File, err error) {
 	lines := replaceLines(strings.Split(text, "\n"))
 	lastWords := lines[len(lines)-2]
 
@@ -50,10 +51,6 @@ func (tweetInfo *TweetInfo) CreateCsv(text string, noDetail bool) (csvFile *os.F
 
 	// details
 	case strings.HasSuffix(lastWords, "とじる"), strings.HasSuffix(lastWords, "Close"):
-		if noDetail {
-			fmt.Println("skip detail")
-			return nil, nil
-		}
 		csvFile, err = tweetInfo.createCsvDetails(lines)
 	}
 	return
@@ -153,11 +150,13 @@ func (tweetInfo *TweetInfo) createCsvDetails(lines []string) (csvFile *os.File, 
 		} else if isExercise && !isEven &&
 			rExercise.MatchString(line) &&
 			rExercise.MatchString(lines[i+1]) {
-			tweetInfo.setDetails(&details, line, lines[i+4])
-			tweetInfo.setDetails(&details, lines[i+1], lines[i+3])
-			tweetInfo.setDetails(&details, lines[i+2], lines[i+5])
+				log.Printf("setdetail %d", i)
+				tweetInfo.setDetails(&details, line, lines[i+4])
+				tweetInfo.setDetails(&details, lines[i+1], lines[i+3])
+				tweetInfo.setDetails(&details, lines[i+2], lines[i+5])
 			break
 		} else if isExercise && rExercise.MatchString(line) {
+			log.Printf("setdetail %s=%s", line, lines[i+1])
 			tweetInfo.setDetails(&details, line, lines[i+1])
 		}
 
@@ -179,11 +178,18 @@ func (tweetInfo *TweetInfo) createCsvDetails(lines []string) (csvFile *os.File, 
 	return
 }
 
-func (tweetInfo *TweetInfo) setDetails(details *[]*Details, nameLine string, quantityLine string) {
+func (tweetInfo *TweetInfo) setDetails(details *[]*Details, nameLine string, quantityLine string) (err error){
 	rTotalQuantity := regexp.MustCompile(`\([0-9]+`)
 
-	quantity, _ := strconv.Atoi(RQuantity.FindAllString(quantityLine, 1)[0])
+	strQuantity := RQuantity.FindAllString(quantityLine, 1)
+	if len(strQuantity) == 0 {
+		return fmt.Errorf("err failed parse quantity [%s]", nameLine)
+	}
+	quantity, _ := strconv.Atoi(strQuantity[0])
 	strTotalQuantity := rTotalQuantity.FindAllString(quantityLine, 1)
+	if len(strTotalQuantity) == 0 {
+		return fmt.Errorf("err failed parse total quantity [%s]", nameLine)
+	}
 	totalQuantity, _ := strconv.Atoi(strings.Trim(strTotalQuantity[0], "("))
 	*details = append(*details, &Details{
 		TwitterId:     tweetInfo.TwitterId,
@@ -193,6 +199,8 @@ func (tweetInfo *TweetInfo) setDetails(details *[]*Details, nameLine string, qua
 		Quantity:      quantity,
 		TotalQuantity: totalQuantity,
 	})
+
+	return nil
 }
 
 func replaceTimeUnit(strTotalTime string) string {

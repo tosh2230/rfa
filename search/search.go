@@ -26,26 +26,7 @@ type Rfa struct {
 	Size      string `json:"size"`
 }
 
-type SearchOpts struct {
-	NoDetail bool
-}
-
-type option func(*SearchOpts)
-
-func NoDetail(v bool) option {
-	return func(s *SearchOpts) {
-		s.NoDetail = v
-	}
-}
-
-func (rfa *Rfa) Search(opts ...option) {
-	s := &SearchOpts{
-		NoDetail: false,
-	}
-	for _, opt := range opts {
-		opt(s)
-	}
-
+func (rfa *Rfa) Search() {
 	size, _ := strconv.Atoi(rfa.Size)
 	lastExecutedAt := getLastExecutedAt(rfa.ProjectID, rfa.Location, rfa.TwitterID)
 
@@ -64,7 +45,7 @@ func (rfa *Rfa) Search(opts ...option) {
 		wgWorker.Add(1)
 		go func(r twitter.Rslt) {
 			defer wgWorker.Done()
-			worker(r, &rfa.ProjectID, &rfa.TwitterID, s.NoDetail)
+			worker(r, &rfa.ProjectID, &rfa.TwitterID)
 		}(rslt)
 	}
 	wgWorker.Wait()
@@ -94,14 +75,14 @@ func getLastExecutedAt(projectID string, location string, twitterId string) time
 	return lastExecutedAt
 }
 
-func worker(r twitter.Rslt, projectID *string, twitterId *string, noDetail bool) {
+func worker(r twitter.Rslt, projectID *string, twitterId *string) {
 	// Detect images and load data to BigQuery
 	wgMedia := new(sync.WaitGroup)
 	for _, url := range r.MediaUrlHttps {
 		wgMedia.Add(1)
 		go func(u string) {
 			defer wgMedia.Done()
-			detecter(*projectID, *twitterId, r.CreatedAt, u, noDetail)
+			detecter(*projectID, *twitterId, r.CreatedAt, u)
 		}(url)
 	}
 	wgMedia.Wait()
@@ -118,7 +99,7 @@ func worker(r twitter.Rslt, projectID *string, twitterId *string, noDetail bool)
 	}
 }
 
-func detecter(projectID string, twitterId string, createdAt time.Time, url string, noDetail bool) {
+func detecter(projectID string, twitterId string, createdAt time.Time, url string) {
 	fmt.Println(url)
 	file, err := twitter.GetImage(url)
 	if err != nil {
@@ -136,13 +117,9 @@ func detecter(projectID string, twitterId string, createdAt time.Time, url strin
 		CreatedAt: createdAt,
 		ImageUrl:  url,
 	}
-	csvFile, err := tweetInfo.CreateCsv(text, noDetail)
+	csvFile, err := tweetInfo.CreateCsv(text)
 	if err != nil {
 		log.Fatal(err)
-	}
-	if csvFile == nil {
-		// for no-detail
-		return
 	}
 
 	err = bq.LoadCsv(projectID, csvFile)
