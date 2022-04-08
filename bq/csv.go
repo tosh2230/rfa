@@ -14,7 +14,7 @@ import (
 	"github.com/gocarina/gocsv"
 )
 
-var RQuantity *regexp.Regexp = regexp.MustCompile(`^[0-9\.]+`)
+var RQuantity *regexp.Regexp = regexp.MustCompile(`^[0-9]+`)
 
 type TweetInfo struct {
 	TwitterId string    `json:"twitter_id" csv:"twitter_id"`
@@ -120,7 +120,7 @@ func (tweetInfo *TweetInfo) setSummary(lines []string, i int) (summary []*Summar
 		// 合計走行距離
 		totalCaloriesInt := RQuantity.FindAllString(lines[i+2], 1)[0]
 		totalCaloriesFract := RQuantity.FindAllString(lines[i+4], 1)[0]
-		totalCaloriesBurned, err = strconv.ParseFloat(totalCaloriesInt+totalCaloriesFract, 64)
+		totalCaloriesBurned, err = strconv.ParseFloat(totalCaloriesInt+"."+totalCaloriesFract, 64)
 		if err != nil {
 			return
 		}

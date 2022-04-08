@@ -16,7 +16,8 @@
 
 .vscode
 
-rfa
+/rfa
+/cloudrun
 csv/*.csv
 img/
 

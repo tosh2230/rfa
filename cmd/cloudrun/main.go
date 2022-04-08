@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"log"
 	"net/http"
 	"os"
@@ -28,24 +27,25 @@ func main() {
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
-	var Param struct {
-		ProjectID string `json:"project_id"`
-		Location  string `json:"location"`
-		TwitterID string `json:"twitter_id"`
-		Size      string `json:"size"`
-	}
+	projectID := r.URL.Query().Get("projectId")
+	location := r.URL.Query().Get("location")
+	twitterID := r.URL.Query().Get("twitterId")
+	size := r.URL.Query().Get("size")
 
-	if err := json.NewDecoder(r.Body).Decode(&Param); err != nil {
-		log.Fatal(err)
-	}
-	if Param.ProjectID == "" {
+	if projectID == "" || twitterID == "" {
 		log.Fatal("Parameters not found.")
+	}
+	if location == "" {
+		location = "us"
+	}
+	if size == "" {
+		size = "1"
 	}
 
 	var rfa search.Rfa
-	rfa.ProjectID = Param.ProjectID
-	rfa.Location = Param.Location
-	rfa.TwitterID = Param.TwitterID
-	rfa.Size = Param.Size
+	rfa.ProjectID = projectID
+	rfa.Location = location
+	rfa.TwitterID = twitterID
+	rfa.Size = size
 	rfa.Search()
 }
