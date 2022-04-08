@@ -87,6 +87,7 @@ func (tweetInfo *TweetInfo) createCsvSummary(lines []string) (csvFile *os.File, 
 }
 
 func (tweetInfo *TweetInfo) setSummary(lines []string, i int) (summary []*Summary, err error) {
+	var rQuantity *regexp.Regexp = regexp.MustCompile(`[0-9]+`)
 	var totalCaloriesBurned float64 = 0
 	var totalDistanceRun float64 = 0
 
@@ -118,8 +119,8 @@ func (tweetInfo *TweetInfo) setSummary(lines []string, i int) (summary []*Summar
 		// 合計消費力ロリー
 		// 05kcal
 		// 合計走行距離
-		totalCaloriesInt := RQuantity.FindAllString(lines[i+2], 1)[0]
-		totalCaloriesFract := RQuantity.FindAllString(lines[i+4], 1)[0]
+		totalCaloriesInt := rQuantity.FindAllString(lines[i+2], 1)[0]
+		totalCaloriesFract := rQuantity.FindAllString(lines[i+4], 1)[0]
 		totalCaloriesBurned, err = strconv.ParseFloat(totalCaloriesInt+"."+totalCaloriesFract, 64)
 		if err != nil {
 			return
