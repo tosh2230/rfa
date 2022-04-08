@@ -107,6 +107,7 @@ func (tweetInfo *TweetInfo) setSummary(lines []string, i int) (summary []*Summar
 	var totalDistanceRun float64 = 0
 	var totalTimeExcercising time.Duration
 
+	lines = lines[i:]
 	// filter lines
 	numerics := lines[:0]
 	for _, v := range lines {
@@ -180,7 +181,7 @@ func (tweetInfo *TweetInfo) setSummary(lines []string, i int) (summary []*Summar
 	} else {
 		units := []string{"s", "m", "h"}
 		for i, numeric := range numerics {
-			strTimeExcercising += numeric + units[i]
+			strTimeExcercising = numeric + units[i] + strTimeExcercising
 		}
 	}
 	totalTimeExcercising, err = time.ParseDuration(strTimeExcercising)

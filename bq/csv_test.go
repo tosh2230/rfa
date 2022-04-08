@@ -241,7 +241,7 @@ func TestSetSummaryZ(t *testing.T) {
 	in_lines := []string{
 		"本日の運動結果",
 		"R 画面を撮影する",
-		"test",
+		"te7st", // 名前に数字
 		"12 13", // 時間単位の欠落
 		"合計活動時間",
 		"分",
