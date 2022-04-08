@@ -15,6 +15,16 @@ import (
 )
 
 var RQuantity *regexp.Regexp = regexp.MustCompile(`^[0-9]+`)
+var RNumeric *regexp.Regexp = regexp.MustCompile(`\d+`)
+var RNonNumeric *regexp.Regexp = regexp.MustCompile(`\D`)
+var RNumericWithSpaceOrDot *regexp.Regexp = regexp.MustCompile(`\d+(?:\s|\.)+\d+`)
+
+type SummaryColumn int
+const (
+	TotalDistanceRun SummaryColumn = iota
+	TotalCaloriesBurned
+	TotalTimeExcercising
+)
 
 type TweetInfo struct {
 	TwitterId string    `json:"twitter_id" csv:"twitter_id"`
@@ -86,45 +96,96 @@ func (tweetInfo *TweetInfo) createCsvSummary(lines []string) (csvFile *os.File, 
 	return
 }
 
+/**
+ * setSummary
+ * 数文字列を抽出し、ドットや空白を含む数文字列を記号部で分割する
+ * 逆順で配列を辿り、２要素ごとにカラムに代入する
+ * 合計活動時間は hourもあるかもしれないので、特別対応
+ */
 func (tweetInfo *TweetInfo) setSummary(lines []string, i int) (summary []*Summary, err error) {
-	var rQuantity *regexp.Regexp = regexp.MustCompile(`[0-9]+`)
 	var totalCaloriesBurned float64 = 0
 	var totalDistanceRun float64 = 0
+	var totalTimeExcercising time.Duration
 
-	totalTimeExcercising, err := time.ParseDuration(replaceTimeUnit(lines[i]))
-	if err != nil {
-		return
+	// filter lines
+	numerics := lines[:0]
+	for _, v := range lines {
+		if RNumeric.MatchString(v) {
+			numerics = append(numerics, v)
+		}
+	}
+	// for garbase collection
+	for i := len(numerics); i < len(lines); i++ {
+		lines[i] = ""
 	}
 
-	if strings.HasSuffix(lines[i+2], "kcal") {
-		totalCaloriesSlice := RQuantity.FindAllString(lines[i+2], 1)
-		if len(totalCaloriesSlice) > 0 {
-			totalCaloriesBurned, err = strconv.ParseFloat(totalCaloriesSlice[0], 64)
-			if err != nil {
-				return
-			}
+	// separete space and dot
+	f := func(r rune) bool {
+		return r == '.' || r == ' '
+	}
+	for i := 0; i < len(numerics); i++ {
+	// for i, v := range numerics {
+		v := numerics[i]
+		if RNumericWithSpaceOrDot.MatchString(v) {
+			vs := strings.FieldsFunc(v, f)
+			numerics = append(numerics[:i], append(vs, numerics[i+1:]...)...)
 		}
+	}
 
-		totalDistanceRunSlice := RQuantity.FindAllString(lines[i+4], 1)
-		if len(totalDistanceRunSlice) > 0 {
-			totalDistanceRun, err = strconv.ParseFloat(totalDistanceRunSlice[0], 64)
-			if err != nil {
-				return
+	// reverse
+	for i := len(numerics)/2 - 1; i >= 0; i-- {
+		opp := len(numerics) - 1 - i
+		numerics[i], numerics[opp] = numerics[opp], numerics[i]
+	}
+
+	log.Println(numerics)
+
+	var step SummaryColumn = TotalDistanceRun
+	var stack string = ""
+	for i, v := range numerics {
+		match := RNumeric.FindAllString(v, 1)
+		if len(match) == 0 {
+			log.Fatal("")
+		}
+		if len(stack) > 0 {
+			stack = match[0] + "." + stack
+			switch step {
+			case TotalDistanceRun:
+				totalDistanceRun, err = strconv.ParseFloat(stack, 64)
+				if err != nil {
+					return
+				}
+			case TotalCaloriesBurned:
+				totalCaloriesBurned, err = strconv.ParseFloat(stack, 64)
+				if err != nil {
+					return
+				}
+			// case TotalTimeExcercising:
+			// 	totalTimeExcercising = time.ParseDuration(stack)
 			}
+			step += 1
+			stack = ""
+			if step == TotalTimeExcercising {
+				numerics = numerics[i+1:]
+				break
+			}
+		} else {
+			stack = match[0]
 		}
+	}
+
+	var strTimeExcercising string = ""
+	if RNonNumeric.MatchString(numerics[0]) {
+		strTimeExcercising = replaceTimeUnit(numerics[0])
 	} else {
-		// 4分31秒
-		// 合計活動時間
-		// 13.
-		// 合計消費力ロリー
-		// 05kcal
-		// 合計走行距離
-		totalCaloriesInt := rQuantity.FindAllString(lines[i+2], 1)[0]
-		totalCaloriesFract := rQuantity.FindAllString(lines[i+4], 1)[0]
-		totalCaloriesBurned, err = strconv.ParseFloat(totalCaloriesInt+"."+totalCaloriesFract, 64)
-		if err != nil {
-			return
+		units := []string{"s", "m", "h"}
+		for i, numeric := range numerics {
+			strTimeExcercising += numeric + units[i]
 		}
+	}
+	totalTimeExcercising, err = time.ParseDuration(strTimeExcercising)
+	if err != nil {
+		return
 	}
 
 	summary = append(summary, &Summary{
