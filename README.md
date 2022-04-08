@@ -60,8 +60,8 @@ For CloudRun
 
 ```sh
 # build and serve
-go build ./cmd/cloudrun
-./cloudrun
+go build ./cmd/server
+./server
 
 # access
 curl "http://localhost:8080/?projectId=<project-id>&twitterId=<username>&location=<bigquery-location>&size=<search-size>"
