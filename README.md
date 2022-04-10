@@ -79,6 +79,9 @@ gcloud run deploy
   - `$ gcloud run services udpate <cloudrun-service-name> --service-account <service account address>`
 1. Deploy
 
+#### URI: `/for/participants`
+FirestoreからTwitterIDを取得し、[search.Search](./search/search.go)を実行する
+
 ## Test
 
 - Set active Application Default Credentials

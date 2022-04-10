@@ -3,8 +3,11 @@ module github.com/tosh223/rfa
 go 1.15
 
 require (
-	cloud.google.com/go v0.81.0
+	cloud.google.com/go v0.100.2
 	cloud.google.com/go/bigquery v1.17.0
+	cloud.google.com/go/firestore v1.6.1 // indirect
+	cloud.google.com/go/secretmanager v1.4.0 // indirect
+	cloud.google.com/go/vision v1.2.0 // indirect
 	github.com/ChimeraCoder/anaconda v2.0.0+incompatible
 	github.com/ChimeraCoder/tokenbucket v0.0.0-20131201223612-c5a927568de7 // indirect
 	github.com/azr/backoff v0.0.0-20160115115103-53511d3c7330 // indirect
@@ -16,13 +19,10 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.4.0
 	golang.org/x/mod v0.4.2 // indirect
-	golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2 // indirect
-	golang.org/x/oauth2 v0.0.0-20210413134643-5e61552d6c78 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	golang.org/x/sys v0.0.0-20220406163625-3f8b81556e12 // indirect
 	golang.org/x/text v0.3.7 // indirect
-	google.golang.org/api v0.44.0
-	google.golang.org/genproto v0.0.0-20210416161957-9910b6c460de
-	google.golang.org/grpc v1.37.0 // indirect
+	google.golang.org/api v0.74.0
+	google.golang.org/genproto v0.0.0-20220405205423-9d709892a2bf
 	google.golang.org/protobuf v1.28.0 // indirect
 )

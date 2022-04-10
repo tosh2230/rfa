@@ -1,13 +1,15 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"log"
 	"net/http"
-	"fmt"
 	"os"
-	"context"
 
+	"github.com/tosh223/rfa/firestore"
 	"github.com/tosh223/rfa/search"
+	"golang.org/x/sync/errgroup"
 )
 
 type Page struct {
@@ -18,6 +20,7 @@ type Page struct {
 func main() {
 	log.Print("starting server...")
 	http.HandleFunc("/", handler)
+	http.HandleFunc("/for/participants", participantHandler)
 
 	// Determine port for HTTP service.
 	port := os.Getenv("PORT")
@@ -69,7 +72,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	if len(query["size"]) > 0 {
 		size = query["size"][0]
 	} else {
-		size = "1"
+		size = "15"
 	}
 
 	var rfa search.Rfa
@@ -80,6 +83,43 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	err := rfa.Search(ctx)
 
 	if err != nil {
+		fmt.Fprintf(w, "Failed %v", err)
+	} else {
+		fmt.Fprintf(w, "Success")
+	}
+
+	return
+}
+
+func participantHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := context.Background()
+	var projectID string = os.Getenv("GCP_PROJECT_ID")
+
+	var rfa search.Rfa
+	rfa.ProjectID = projectID
+	rfa.Location = "us"
+	rfa.Size = "15"
+
+	eg, egCtx := errgroup.WithContext(ctx)
+	participants, err := firestore.GetParticipants(ctx, projectID)
+	log.Println(participants)
+	if err != nil {
+		fmt.Fprintf(w, "Failed %v", err)
+		return
+	}
+	for _, v := range participants {
+		rfa.TwitterID = v.ID
+		if rfa.TwitterID == "" {
+			fmt.Fprintf(w, "Failed getting TwitterID")
+			return
+		}
+		rfa := rfa
+		eg.Go(func() error {
+			return rfa.Search(egCtx)
+		})
+	}
+
+	if err := eg.Wait(); err != nil {
 		fmt.Fprintf(w, "Failed %v", err)
 	} else {
 		fmt.Fprintf(w, "Success")
