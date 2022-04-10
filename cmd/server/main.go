@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"fmt"
 	"os"
+	"context"
 
 	"github.com/tosh223/rfa/search"
 )
@@ -33,6 +34,7 @@ func main() {
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
+	ctx := context.Background()
 	query := r.URL.Query()
 
 	var projectID string = os.Getenv("GCP_PROJECT_ID")
@@ -75,7 +77,13 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	rfa.Location = location
 	rfa.TwitterID = twitterID
 	rfa.Size = size
-	rfa.Search()
+	err := rfa.Search(ctx)
 
-	fmt.Fprintf(w, "HelloWorld")
+	if err != nil {
+		fmt.Fprintf(w, "Failed %v", err)
+	} else {
+		fmt.Fprintf(w, "Success")
+	}
+
+	return
 }

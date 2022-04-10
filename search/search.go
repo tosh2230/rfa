@@ -6,13 +6,14 @@ import (
 	"log"
 	"os"
 	"strconv"
-	"sync"
 	"time"
+	"context"
 
 	"github.com/tosh223/rfa/bq"
 	"github.com/tosh223/rfa/pixela"
 	"github.com/tosh223/rfa/twitter"
 	"github.com/tosh223/rfa/vision_texts"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/api/googleapi"
 )
 
@@ -26,34 +27,45 @@ type Rfa struct {
 	Size      string `json:"size"`
 }
 
-func (rfa *Rfa) Search() {
-	size, _ := strconv.Atoi(rfa.Size)
-	lastExecutedAt := getLastExecutedAt(rfa.ProjectID, rfa.Location, rfa.TwitterID)
+func (rfa *Rfa) Search(ctx context.Context) (err error) {
+	select {
+	case <-ctx.Done():
+		return
+	default:
+		size, _ := strconv.Atoi(rfa.Size)
+		lastExecutedAt, err := getLastExecutedAt(rfa.ProjectID, rfa.Location, rfa.TwitterID)
+		if err != nil {
+			return err
+		}
 
-	twCfg, err := twitter.GetConfig(rfa.ProjectID, twitterSecretID)
-	if err != nil {
-		log.Fatal(err)
+		twCfg, err := twitter.GetConfig(rfa.ProjectID, twitterSecretID)
+		if err != nil {
+			return err
+		}
+
+		rslts, err := twCfg.Search(&rfa.TwitterID, size, lastExecutedAt)
+		if err != nil {
+			return err
+		}
+
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+		eg, egCtx := errgroup.WithContext(ctx)
+		for _, rslt := range rslts {
+			r := rslt
+			eg.Go(func() error {
+				return worker(egCtx, r, &rfa.ProjectID, &rfa.TwitterID)
+			})
+		}
+		if err := eg.Wait(); err != nil {
+			return err
+		}
 	}
 
-	rslts, err := twCfg.Search(&rfa.TwitterID, size, lastExecutedAt)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	wgWorker := new(sync.WaitGroup)
-	for _, rslt := range rslts {
-		wgWorker.Add(1)
-		go func(r twitter.Rslt) {
-			defer wgWorker.Done()
-			worker(r, &rfa.ProjectID, &rfa.TwitterID)
-		}(rslt)
-	}
-	wgWorker.Wait()
+	return nil
 }
 
-func getLastExecutedAt(projectID string, location string, twitterId string) time.Time {
-	var lastExecutedAt time.Time
-
+func getLastExecutedAt(projectID string, location string, twitterId string) (lastExecutedAt time.Time, err error) {
 	latest, err := bq.GetLatest(projectID, location, twitterId)
 	if err != nil {
 		var gerr *googleapi.Error
@@ -61,55 +73,68 @@ func getLastExecutedAt(projectID string, location string, twitterId string) time
 			switch gerr.Code {
 			case 404:
 				lastExecutedAt = time.Time{}
+				log.Printf("bigquery return 404 %v", err)
+				err = nil
 			default:
-				log.Fatal(err)
+				log.Printf("Fatal %v", err)
+				return
 			}
 		} else {
-			log.Fatal(err)
+			log.Printf("Fatal %v", err)
+			return
 		}
 	} else if latest == nil {
 		lastExecutedAt = time.Time{}
 	} else {
 		lastExecutedAt = latest[0].CreatedAt.Timestamp
 	}
-	return lastExecutedAt
+	return
 }
 
-func worker(r twitter.Rslt, projectID *string, twitterId *string) {
+func worker(ctx context.Context, r twitter.Rslt, projectID *string, twitterId *string) error {
 	// Detect images and load data to BigQuery
-	wgMedia := new(sync.WaitGroup)
-	for _, url := range r.MediaUrlHttps {
-		wgMedia.Add(1)
-		go func(u string) {
-			defer wgMedia.Done()
-			detecter(*projectID, *twitterId, r.CreatedAt, u)
-		}(url)
-	}
-	wgMedia.Wait()
+	eg, _ := errgroup.WithContext(ctx)
 
-	// Pixela
-	pxCfg, err := pixela.GetConfig(*projectID, pixelaSecretID)
-	if err != nil {
-		return
-	}
+	select {
+	case <-ctx.Done():
+		return nil
+	default:
+		for _, url := range r.MediaUrlHttps {
+			u := url
+			eg.Go(func() error {
+				return detecter(*projectID, *twitterId, r.CreatedAt, u)
+			})
+		}
+		if err := eg.Wait(); err != nil {
+			return err
+		}
 
-	_, err = pxCfg.Grow(r.CreatedAt)
-	if err != nil {
-		log.Fatalln("Error: pixela.CfgList.Grow", err)
+		// Pixela
+		pxCfg, err := pixela.GetConfig(*projectID, pixelaSecretID)
+		if err != nil {
+			log.Println("Skip Pixela")
+			return nil
+		}
+
+		_, err = pxCfg.Grow(r.CreatedAt)
+		if err != nil {
+			return fmt.Errorf("Error: pixela.CfgList.Grow %v", err)
+		}
 	}
+	return nil
 }
 
-func detecter(projectID string, twitterId string, createdAt time.Time, url string) {
+func detecter(projectID string, twitterId string, createdAt time.Time, url string) error {
 	fmt.Println(url)
 	file, err := twitter.GetImage(url)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	defer os.Remove(file.Name())
 
 	text := vision_texts.Detect(file.Name())
 	if text == "" {
-		return
+		return fmt.Errorf("Failed Detect Vision API")
 	}
 
 	tweetInfo := bq.TweetInfo{
@@ -119,11 +144,13 @@ func detecter(projectID string, twitterId string, createdAt time.Time, url strin
 	}
 	csvFile, err := tweetInfo.CreateCsv(text)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	err = bq.LoadCsv(projectID, csvFile)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
+
+	return nil
 }
