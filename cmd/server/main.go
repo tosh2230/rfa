@@ -102,11 +102,13 @@ func participantHandler(w http.ResponseWriter, r *http.Request) {
 
 	eg, egCtx := errgroup.WithContext(ctx)
 	participants, err := firestore.GetParticipants(ctx, projectID)
-	log.Println(participants)
 	if err != nil {
-		fmt.Fprintf(w, "Failed %v", err)
+		msg := fmt.Sprintf("Failed %v", err)
+		log.Println(msg)
+		fmt.Fprintf(w, msg)
 		return
 	}
+	log.Printf("participants: %v", participants)
 	for _, v := range participants {
 		rfa.TwitterID = v.ID
 		if rfa.TwitterID == "" {
@@ -120,8 +122,11 @@ func participantHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := eg.Wait(); err != nil {
-		fmt.Fprintf(w, "Failed %v", err)
+		msg := fmt.Sprintf("Failed %v", err)
+		log.Println(msg)
+		fmt.Fprintf(w, msg)
 	} else {
+		log.Println("success")
 		fmt.Fprintf(w, "Success")
 	}
 
