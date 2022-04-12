@@ -213,13 +213,11 @@ func (tweetInfo *TweetInfo) createCsvDetails(lines []string) (csvFile *os.File, 
 		} else if isExercise && !isEven &&
 			rExercise.MatchString(line) &&
 			rExercise.MatchString(lines[i+1]) {
-				log.Printf("setdetail %d", i)
 				tweetInfo.setDetails(&details, line, lines[i+4])
 				tweetInfo.setDetails(&details, lines[i+1], lines[i+3])
 				tweetInfo.setDetails(&details, lines[i+2], lines[i+5])
 			break
 		} else if isExercise && rExercise.MatchString(line) {
-			log.Printf("setdetail %s=%s", line, lines[i+1])
 			tweetInfo.setDetails(&details, line, lines[i+1])
 		}
 

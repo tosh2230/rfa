@@ -276,3 +276,47 @@ func TestSetSummaryZ(t *testing.T) {
 		t.Errorf("act:%f, except: %f", s[0].TotalDistanceRun, want.TotalDistanceRun)
 	}
 }
+
+func TestSetSummaryY(t *testing.T) {
+	tweetInfo := TweetInfo{
+		TwitterId: "test",
+		CreatedAt: time.Time{},
+		ImageUrl:  "https://example.com",
+	}
+	in_lines := []string{
+		"R 画面を撮影する",
+		"本日の運動結果",
+		"test",
+		"9分1秒",
+		"合計活動時間",
+		"48.12", // 消費カロリーが
+		"合計消費力ロリー",
+		"12kcal", // 重複している
+		"0.9km",
+		"合計走行距離",
+		"次へ",
+		" ",
+	}
+
+	want := Summary{
+		TwitterId: "test",
+		CreatedAt: time.Time{},
+		ImageUrl: "https://example.com",
+		TotalTimeExcercising: time.Duration(12*time.Minute + 13*time.Second),
+		TotalCaloriesBurned: 10.11,
+		TotalDistanceRun: 0.14,
+	}
+	s, err := tweetInfo.setSummary(in_lines, 3)
+	if err != nil {
+		t.Error(err)
+	}
+	if s[0].TotalTimeExcercising != want.TotalTimeExcercising {
+		t.Errorf("act:%v, except: %v", s[0].TotalTimeExcercising, want.TotalTimeExcercising)
+	}
+	if s[0].TotalCaloriesBurned != want.TotalCaloriesBurned {
+		t.Errorf("act:%f, except: %f", s[0].TotalCaloriesBurned, want.TotalCaloriesBurned)
+	}
+	if s[0].TotalDistanceRun != want.TotalDistanceRun {
+		t.Errorf("act:%f, except: %f", s[0].TotalDistanceRun, want.TotalDistanceRun)
+	}
+}
