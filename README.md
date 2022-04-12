@@ -82,6 +82,58 @@ gcloud run deploy
 #### URI: `/for/participants`
 FirestoreからTwitterIDを取得し、[search.Search](./search/search.go)を実行する
 
+### GitHub Actions
+#### [Cloud Run](./.github/workflows/cloud-run.yml)
+サービスアカウントを作っておく
+- 権限：Cloud Run管理者、Cloud Run サービスエージェント、Cloud Build サービスエージェント
+
+Workflow Identityを設定
+```sh
+export PROJECT_ID = <project-id>
+export POOL_NAME = <pool-name>
+export POOL_DISPLAY_NAME = <pool-display-name>
+export PROVIDER_NAME = <provider-name>
+export PROVIDER_DISPLAY_NAME = <provider-display-name>
+export SA_EMAIL = <Service Account>
+export GITHUB_REPO = <owner>/<repository>
+
+# Create pool
+gcloud iam workload-identity-pools create "$POOL_NAME" \
+  --project="$PROJECT_ID" \
+  --location="global" \
+  --display-name="$POOL_DISPLAY_NAME"
+
+# Save pool-id
+export WORKLOAD_IDENTITY_POOL_ID=$( \
+    gcloud iam workload-identity-pools describe "${POOL_NAME}" \
+    --project="${PROJECT_ID}" --location="global" \
+    --format="value(name)" \
+)
+
+# Create provider
+gcloud iam workload-identity-pools providers create-oidc "$PROVIDER_NAME" \
+  --project="$PROJECT_ID" \
+  --location="global" \
+  --workload-identity-pool="$POOL_NAME" \
+  --display-name="$PROVIDER_DISPLAY_NAME" \
+  --attribute-mapping="google.subject=assertion.sub,attribute.actor=assertion.actor,attribute.aud=assertion.aud,attribute.repository=assertion.repository" \
+  --issuer-uri="https://token.actions.githubusercontent.com"
+
+# Impersonate SA
+gcloud iam service-accounts add-iam-policy-binding "${SA_EMAIL}" \
+  --project="${PROJECT_ID}" \
+  --role="foles/iam.workloadIdentityUser" \
+  --member="principalSet:/qiam.googleapis.com/${WORKLOAD_IDENTITY_POOL_ID}/attribute.repository/${GITHUB_REPO}"
+```
+
+PUSH!
+
+Ref
+- https://cloud.google.com/blog/ja/products/identity-security/enabling-keyless-authentication-from-github-actions
+- https://zenn.dev/vvakame/articles/gha-and-gcp-workload-identity
+- https://zenn.dev/rince/scraps/4e3cbba78d2cd1
+
+
 ## Test
 
 - Set active Application Default Credentials
