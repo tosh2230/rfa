@@ -17,13 +17,17 @@ import (
 var RQuantity *regexp.Regexp = regexp.MustCompile(`^[0-9]+`)
 var RNumeric *regexp.Regexp = regexp.MustCompile(`\d+`)
 var RNonNumeric *regexp.Regexp = regexp.MustCompile(`\D`)
-var RNumericWithSpaceOrDot *regexp.Regexp = regexp.MustCompile(`\d+(?:\s|\.)+\d+`)
+var RNumericWithSpace *regexp.Regexp = regexp.MustCompile(`\d+\s+\d+`)
+var RDecimal *regexp.Regexp = regexp.MustCompile(`\d+\.\d+`)
+var RJapanTimeDuration *regexp.Regexp = regexp.MustCompile(`(?:\d+時間)?\d+分\d+秒`)
+var RCalorie *regexp.Regexp = regexp.MustCompile(`kcal`)
+var RDistance *regexp.Regexp = regexp.MustCompile(`km`)
 
 type SummaryColumn int
 const (
-	TotalDistanceRun SummaryColumn = iota
+	TotalTimeExcercising SummaryColumn = iota
 	TotalCaloriesBurned
-	TotalTimeExcercising
+	TotalDistanceRun
 )
 
 type TweetInfo struct {
@@ -105,10 +109,10 @@ func (tweetInfo *TweetInfo) createCsvSummary(lines []string) (csvFile *os.File, 
 func (tweetInfo *TweetInfo) setSummary(lines []string, i int) (summary []*Summary, err error) {
 	var totalCaloriesBurned float64 = 0
 	var totalDistanceRun float64 = 0
-	var totalTimeExcercising time.Duration
+	var totalTimeExcercising time.Duration = 0
 
 	lines = lines[i:]
-	// filter lines
+	// filter non-numeric
 	numerics := lines[:0]
 	for _, v := range lines {
 		if RNumeric.MatchString(v) {
@@ -119,17 +123,102 @@ func (tweetInfo *TweetInfo) setSummary(lines []string, i int) (summary []*Summar
 	for i := len(numerics); i < len(lines); i++ {
 		lines[i] = ""
 	}
+	log.Printf("summary numerics: %q", numerics)
 
-	// separete space and dot
-	f := func(r rune) bool {
-		return r == '.' || r == ' '
+	var marks []int // 処理済みの配列要素番号
+	for i, v := range numerics {
+		if str := RJapanTimeDuration.FindString(v); len(str) > 0 {
+			strTimeExcercising := replaceTimeUnit(str)
+			totalTimeExcercising, err = time.ParseDuration(strTimeExcercising)
+			if err != nil {
+				return
+			}
+			marks = append(marks, i)
+		} else if strDecimal := RDecimal.FindString(v); len(strDecimal) > 0 {
+			DECIMAL:
+			for _, w := range numerics[i:] {
+				switch {
+				case RCalorie.MatchString(w):
+					totalCaloriesBurned, err = strconv.ParseFloat(strDecimal, 64)
+					if err != nil {
+						return
+					}
+					marks = append(marks, i)
+					break DECIMAL
+				case RDistance.MatchString(w):
+					totalDistanceRun, err = strconv.ParseFloat(strDecimal, 64)
+					if err != nil {
+						return
+					}
+					marks = append(marks, i)
+					break DECIMAL
+				default:
+					continue
+				}
+			}
+		}
 	}
+	msgTotals := fmt.Sprintf("duration %v, %vkcal, %vkm", totalTimeExcercising, totalCaloriesBurned, totalDistanceRun)
+	log.Println(msgTotals)
+
+	if len(marks) >= 3 {
+		if totalTimeExcercising == 0 || totalCaloriesBurned == 0 || totalDistanceRun == 0 {
+			msg := fmt.Sprintf("Failed parse summary: %v [marks=%v]", msgTotals, marks)
+			err = fmt.Errorf(msg)
+			return
+		}
+		summary = append(summary, &Summary{
+			TwitterId:            tweetInfo.TwitterId,
+			CreatedAt:            tweetInfo.CreatedAt,
+			ImageUrl:             tweetInfo.ImageUrl,
+			TotalTimeExcercising: totalTimeExcercising,
+			TotalCaloriesBurned:  totalCaloriesBurned,
+			TotalDistanceRun:     totalDistanceRun,
+		})
+		return
+	}
+
+	// filter marks
+	mark, marks := marks[0], marks[1:]
+	n := 0
+	FILTER_MARKS:
+	for i, v := range numerics {
+		if i == mark {
+			switch len(marks){
+			case 0:
+				break FILTER_MARKS
+			case 1:
+				mark = marks[0]
+			default:
+				mark, marks = marks[0], marks[1:]
+			}
+		} else {
+			numerics[n] = v
+			n++
+		}
+	}
+	numerics = numerics[:n]
+	log.Printf("filter marks: %q", numerics)
+
+	
 	for i := 0; i < len(numerics); i++ {
-	// for i, v := range numerics {
 		v := numerics[i]
-		if RNumericWithSpaceOrDot.MatchString(v) {
-			vs := strings.FieldsFunc(v, f)
-			numerics = append(numerics[:i], append(vs, numerics[i+1:]...)...)
+		if RNumericWithSpace.MatchString(v) {
+			vs := RNonNumeric.Split(v, -1)
+			// filter empty string
+			n := 0
+			for _, v := range vs {
+				if len(v) > 0 {
+					vs[n] = v
+					n++
+				}
+			}
+			vs = vs[:n]
+
+			if i+1 < len(numerics) {
+				vs = append(vs, numerics[i+1:]...)
+			}
+			numerics = append(numerics[:i], vs...)
 		}
 	}
 
@@ -139,54 +228,48 @@ func (tweetInfo *TweetInfo) setSummary(lines []string, i int) (summary []*Summar
 		numerics[i], numerics[opp] = numerics[opp], numerics[i]
 	}
 
-	log.Println(numerics)
+	log.Printf("process stack mode: %q\n", numerics)
 
-	var step SummaryColumn = TotalDistanceRun
 	var stack string = ""
+	STACK:
 	for i, v := range numerics {
-		match := RNumeric.FindAllString(v, 1)
+		match := RNumeric.FindString(v)
 		if len(match) == 0 {
 			log.Fatal("")
 		}
-		if len(stack) > 0 {
-			stack = match[0] + "." + stack
-			switch step {
-			case TotalDistanceRun:
-				totalDistanceRun, err = strconv.ParseFloat(stack, 64)
-				if err != nil {
-					return
-				}
-			case TotalCaloriesBurned:
-				totalCaloriesBurned, err = strconv.ParseFloat(stack, 64)
-				if err != nil {
-					return
-				}
-			// case TotalTimeExcercising:
-			// 	totalTimeExcercising = time.ParseDuration(stack)
-			}
-			step += 1
-			stack = ""
-			if step == TotalTimeExcercising {
-				numerics = numerics[i+1:]
-				break
-			}
-		} else {
-			stack = match[0]
+		if len(stack) == 0 {
+			stack = match
+			continue
 		}
+		stack = match + "." + stack
+		switch {
+		case totalDistanceRun == 0:
+			totalDistanceRun, err = strconv.ParseFloat(stack, 64)
+			if err != nil {
+				return
+			}
+		case totalCaloriesBurned == 0:
+			totalCaloriesBurned, err = strconv.ParseFloat(stack, 64)
+			if err != nil {
+				return
+			}
+		default:
+			numerics = numerics[i-1:]
+			break STACK
+		}
+		stack = ""
 	}
 
-	var strTimeExcercising string = ""
-	if RNonNumeric.MatchString(numerics[0]) {
-		strTimeExcercising = replaceTimeUnit(numerics[0])
-	} else {
+	if totalTimeExcercising == 0 {
+		var strTimeExcercising string = ""
 		units := []string{"s", "m", "h"}
-		for i, numeric := range numerics {
-			strTimeExcercising = numeric + units[i] + strTimeExcercising
+		for i, v := range numerics {
+			strTimeExcercising = v + units[i] + strTimeExcercising
 		}
-	}
-	totalTimeExcercising, err = time.ParseDuration(strTimeExcercising)
-	if err != nil {
-		return
+		totalTimeExcercising, err = time.ParseDuration(strTimeExcercising)
+		if err != nil {
+			return
+		}
 	}
 
 	summary = append(summary, &Summary{
@@ -268,7 +351,7 @@ func (tweetInfo *TweetInfo) setDetails(details *[]*Details, nameLine string, qua
 
 func replaceTimeUnit(strTotalTime string) string {
 	replaceTimeUnit := [][]string{
-		{"時", "h"},
+		{"時間", "h"},
 		{"分", "m"},
 		{"秒", "s"},
 	}
