@@ -67,8 +67,11 @@ func Query(projectID string, location string, queryStr string) (*bigquery.RowIte
 }
 
 func LoadCsv(projectID string, csvFile *os.File) error {
-	var tableID string = strings.Split(filepath.Base(csvFile.Name()), "_")[0]
-
+	splits := strings.Split(filepath.Base(csvFile.Name()), "_")
+	if len(splits) == 0 {
+		return fmt.Errorf("filepath invalid? %s", csvFile.Name())
+	}
+	var tableID string = splits[0]
 	ctx := context.Background()
 	client, err := bigquery.NewClient(ctx, projectID)
 	if err != nil {

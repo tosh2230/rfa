@@ -30,6 +30,13 @@ const (
 	TotalDistanceRun
 )
 
+type TypeDetectedText int
+const (
+	UndefinedText = iota
+	SummaryText
+	DetailsText
+)
+
 type TweetInfo struct {
 	TwitterId string    `json:"twitter_id" csv:"twitter_id"`
 	CreatedAt time.Time `json:"created_at" csv:"created_at"`
@@ -56,18 +63,36 @@ type Details struct {
 
 func (tweetInfo *TweetInfo) CreateCsv(text string) (csvFile *os.File, err error) {
 	lines := replaceLines(strings.Split(text, "\n"))
-	lastWords := lines[len(lines)-2]
 
-	switch {
+	class := classificateDetectedText(text)
+	switch class {
 	// summary
-	case strings.HasSuffix(lastWords, "次へ"), strings.HasSuffix(lastWords, "Next"):
+	case SummaryText:
 		csvFile, err = tweetInfo.createCsvSummary(lines)
-
 	// details
-	case strings.HasSuffix(lastWords, "とじる"), strings.HasSuffix(lastWords, "Close"):
+	case DetailsText:
 		csvFile, err = tweetInfo.createCsvDetails(lines)
+	default:
+		err = fmt.Errorf("Received Image is not expected type")
 	}
+
 	return
+}
+
+var (
+	RNext = regexp.MustCompile(`(?:次へ|Next)`)
+	RClose = regexp.MustCompile(`(?:とじる|Close)`)
+)
+
+func classificateDetectedText(text string) TypeDetectedText {
+	switch {
+	case RNext.MatchString(text):
+		return SummaryText
+	case RClose.MatchString(text):
+		return DetailsText
+	default:
+		return UndefinedText
+	}
 }
 
 func (tweetInfo *TweetInfo) createCsvSummary(lines []string) (csvFile *os.File, err error) {
@@ -125,7 +150,13 @@ func (tweetInfo *TweetInfo) setSummary(lines []string, i int) (summary []*Summar
 	}
 	log.Printf("summary numerics: %q", numerics)
 
-	var marks []int // 処理済みの配列要素番号
+	// 処理済みの配列要素番号
+	mark_initial := len(numerics) // 初期値はMAX
+	marks := map[SummaryColumn]int{
+		TotalTimeExcercising: mark_initial,
+		TotalCaloriesBurned: mark_initial,
+		TotalDistanceRun: mark_initial,
+	}
 	for i, v := range numerics {
 		if str := RJapanTimeDuration.FindString(v); len(str) > 0 {
 			strTimeExcercising := replaceTimeUnit(str)
@@ -133,7 +164,7 @@ func (tweetInfo *TweetInfo) setSummary(lines []string, i int) (summary []*Summar
 			if err != nil {
 				return
 			}
-			marks = append(marks, i)
+			marks[TotalTimeExcercising] = i
 		} else if strDecimal := RDecimal.FindString(v); len(strDecimal) > 0 {
 			DECIMAL:
 			for _, w := range numerics[i:] {
@@ -143,14 +174,14 @@ func (tweetInfo *TweetInfo) setSummary(lines []string, i int) (summary []*Summar
 					if err != nil {
 						return
 					}
-					marks = append(marks, i)
+					marks[TotalCaloriesBurned] = i
 					break DECIMAL
 				case RDistance.MatchString(w):
 					totalDistanceRun, err = strconv.ParseFloat(strDecimal, 64)
 					if err != nil {
 						return
 					}
-					marks = append(marks, i)
+					marks[TotalDistanceRun] = i
 					break DECIMAL
 				default:
 					continue
@@ -161,38 +192,36 @@ func (tweetInfo *TweetInfo) setSummary(lines []string, i int) (summary []*Summar
 	msgTotals := fmt.Sprintf("duration %v, %vkcal, %vkm", totalTimeExcercising, totalCaloriesBurned, totalDistanceRun)
 	log.Println(msgTotals)
 
-	if len(marks) >= 3 {
-		if totalTimeExcercising == 0 || totalCaloriesBurned == 0 || totalDistanceRun == 0 {
-			msg := fmt.Sprintf("Failed parse summary: %v [marks=%v]", msgTotals, marks)
-			err = fmt.Errorf(msg)
+	remains := len(marks) // 残りの処理必要数
+	for _, v := range marks {
+		if v < mark_initial {
+			// markがMAX以下→処理済み
+			remains--
+		}
+		if remains == 0 {
+			// if totalTimeExcercising == 0 || totalCaloriesBurned == 0 || totalDistanceRun == 0 {
+			// 	msg := fmt.Sprintf("Failed parse summary: %v [marks=%v]", msgTotals, marks)
+			// 	err = fmt.Errorf(msg)
+			// 	return
+			// }
+			summary = append(summary, &Summary{
+				TwitterId:            tweetInfo.TwitterId,
+				CreatedAt:            tweetInfo.CreatedAt,
+				ImageUrl:             tweetInfo.ImageUrl,
+				TotalTimeExcercising: totalTimeExcercising,
+				TotalCaloriesBurned:  totalCaloriesBurned,
+				TotalDistanceRun:     totalDistanceRun,
+			})
 			return
 		}
-		summary = append(summary, &Summary{
-			TwitterId:            tweetInfo.TwitterId,
-			CreatedAt:            tweetInfo.CreatedAt,
-			ImageUrl:             tweetInfo.ImageUrl,
-			TotalTimeExcercising: totalTimeExcercising,
-			TotalCaloriesBurned:  totalCaloriesBurned,
-			TotalDistanceRun:     totalDistanceRun,
-		})
-		return
 	}
 
 	// filter marks
-	mark, marks := marks[0], marks[1:]
 	n := 0
-	FILTER_MARKS:
 	for i, v := range numerics {
-		if i == mark {
-			switch len(marks){
-			case 0:
-				break FILTER_MARKS
-			case 1:
-				mark = marks[0]
-			default:
-				mark, marks = marks[0], marks[1:]
-			}
-		} else {
+		switch  {
+		case i == marks[TotalTimeExcercising] || i == marks[TotalCaloriesBurned] || i >= marks[TotalDistanceRun]:
+		default:
 			numerics[n] = v
 			n++
 		}
@@ -200,7 +229,6 @@ func (tweetInfo *TweetInfo) setSummary(lines []string, i int) (summary []*Summar
 	numerics = numerics[:n]
 	log.Printf("filter marks: %q", numerics)
 
-	
 	for i := 0; i < len(numerics); i++ {
 		v := numerics[i]
 		if RNumericWithSpace.MatchString(v) {

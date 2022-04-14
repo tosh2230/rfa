@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"context"
 	"os"
 
 	"github.com/tosh223/rfa/search"
@@ -11,6 +12,7 @@ import (
 var rootCmd = &cobra.Command{
 	Use: "rfa",
 	Run: func(cmd *cobra.Command, args []string) {
+		ctx := context.Background()
 		projectID, _ := cmd.PersistentFlags().GetString("project-id")
 		location, _ := cmd.PersistentFlags().GetString("location")
 		twitterID, _ := cmd.PersistentFlags().GetString("twitter-id")
@@ -21,7 +23,10 @@ var rootCmd = &cobra.Command{
 		rfa.Location = location
 		rfa.TwitterID = twitterID
 		rfa.Size = sizeStr
-		rfa.Search()
+		err := rfa.Search(ctx)
+		if err != nil {
+			fmt.Println(err)
+		}
 	},
 }
 
