@@ -63,17 +63,19 @@ type Details struct {
 
 func (tweetInfo *TweetInfo) CreateCsv(text string) (csvFile *os.File, err error) {
 	lines := replaceLines(strings.Split(text, "\n"))
-	lastWords := lines[len(lines)-2]
 
-	switch {
+	class := classificateDetectedText(text)
+	switch class {
 	// summary
-	case strings.HasSuffix(lastWords, "次へ"), strings.HasSuffix(lastWords, "Next"):
+	case SummaryText:
 		csvFile, err = tweetInfo.createCsvSummary(lines)
-
 	// details
-	case strings.HasSuffix(lastWords, "とじる"), strings.HasSuffix(lastWords, "Close"):
+	case DetailsText:
 		csvFile, err = tweetInfo.createCsvDetails(lines)
+	default:
+		err = fmt.Errorf("Received Image is not expected type")
 	}
+
 	return
 }
 
