@@ -363,3 +363,67 @@ func TestSetSummaryY(t *testing.T) {
 		t.Errorf("act:%f, except: %f", s[0].TotalDistanceRun, want.TotalDistanceRun)
 	}
 }
+
+func TestSetSummary20220414(t *testing.T) {
+	tweetInfo := TweetInfo{
+		TwitterId: "test",
+		CreatedAt: time.Time{},
+		ImageUrl:  "https://example.com",
+	}
+	in_lines := []string{
+		"R 画面を撮影する",
+		"本日の運動結果",
+		"年中無休でスワイショウ",
+		"カイト",
+		"22 5»",
+		"分",
+		"合計活動時間",
+		"73.21kcal",
+		"合計消費力ロリー",
+		"合計走行距離",
+		"1.26km",
+		"次へ",
+		"1.",
+		" ",
+	}
+
+	want := Summary{
+		TwitterId: "test",
+		CreatedAt: time.Time{},
+		ImageUrl: "https://example.com",
+		TotalTimeExcercising: time.Duration(22*time.Minute + 5*time.Second),
+		TotalCaloriesBurned: 73.21,
+		TotalDistanceRun: 1.26,
+	}
+	s, err := tweetInfo.setSummary(in_lines, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s[0].TotalTimeExcercising != want.TotalTimeExcercising {
+		t.Errorf("act:%v, except: %v", s[0].TotalTimeExcercising, want.TotalTimeExcercising)
+	}
+	if s[0].TotalCaloriesBurned != want.TotalCaloriesBurned {
+		t.Errorf("act:%f, except: %f", s[0].TotalCaloriesBurned, want.TotalCaloriesBurned)
+	}
+	if s[0].TotalDistanceRun != want.TotalDistanceRun {
+		t.Errorf("act:%f, except: %f", s[0].TotalDistanceRun, want.TotalDistanceRun)
+	}
+}
+
+func TestClassificateDetectedText(t *testing.T) {
+	if class := classificateDetectedText("次へ"); class != SummaryText {
+		t.Error("act:%v, except:%v", class, SummaryText)
+	}
+	if class := classificateDetectedText("Next"); class != SummaryText {
+		t.Error("act:%v, except:%v", class, SummaryText)
+	}
+	if class := classificateDetectedText("とじる"); class != DetailsText {
+		t.Error("act:%v, except:%v", class, SummaryText)
+	}
+	if class := classificateDetectedText("Close"); class != DetailsText {
+		t.Error("act:%v, except:%v", class, SummaryText)
+	}
+	if class := classificateDetectedText("next"); class != UndefinedText {
+		t.Error("act:%v, except:%v", class, SummaryText)
+	}
+}

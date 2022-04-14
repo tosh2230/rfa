@@ -30,6 +30,13 @@ const (
 	TotalDistanceRun
 )
 
+type TypeDetectedText int
+const (
+	UndefinedText = iota
+	SummaryText
+	DetailsText
+)
+
 type TweetInfo struct {
 	TwitterId string    `json:"twitter_id" csv:"twitter_id"`
 	CreatedAt time.Time `json:"created_at" csv:"created_at"`
@@ -68,6 +75,22 @@ func (tweetInfo *TweetInfo) CreateCsv(text string) (csvFile *os.File, err error)
 		csvFile, err = tweetInfo.createCsvDetails(lines)
 	}
 	return
+}
+
+var (
+	RNext = regexp.MustCompile(`(?:次へ|Next)`)
+	RClose = regexp.MustCompile(`(?:とじる|Close)`)
+)
+
+func classificateDetectedText(text string) TypeDetectedText {
+	switch {
+	case RNext.MatchString(text):
+		return SummaryText
+	case RClose.MatchString(text):
+		return DetailsText
+	default:
+		return UndefinedText
+	}
 }
 
 func (tweetInfo *TweetInfo) createCsvSummary(lines []string) (csvFile *os.File, err error) {
