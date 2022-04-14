@@ -100,7 +100,6 @@ func participantHandler(w http.ResponseWriter, r *http.Request) {
 	rfa.Location = "us"
 	rfa.Size = "15"
 
-	eg, egCtx := errgroup.WithContext(ctx)
 	participants, err := firestore.GetParticipants(ctx, projectID)
 	if err != nil {
 		msg := fmt.Sprintf("Failed %v", err)
@@ -109,6 +108,7 @@ func participantHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Printf("participants: %v", participants)
+	var eg errgroup.Group
 	for _, v := range participants {
 		rfa.TwitterID = v.ID
 		if rfa.TwitterID == "" {
@@ -117,7 +117,7 @@ func participantHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		rfa := rfa
 		eg.Go(func() error {
-			return rfa.Search(egCtx)
+			return rfa.Search(ctx)
 		})
 	}
 
