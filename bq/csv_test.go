@@ -412,18 +412,18 @@ func TestSetSummary20220414(t *testing.T) {
 
 func TestClassificateDetectedText(t *testing.T) {
 	if class := classificateDetectedText("次へ"); class != SummaryText {
-		t.Error("act:%v, except:%v", class, SummaryText)
+		t.Errorf("act:%v, except:%v", class, SummaryText)
 	}
 	if class := classificateDetectedText("Next"); class != SummaryText {
-		t.Error("act:%v, except:%v", class, SummaryText)
+		t.Errorf("act:%v, except:%v", class, SummaryText)
 	}
 	if class := classificateDetectedText("とじる"); class != DetailsText {
-		t.Error("act:%v, except:%v", class, SummaryText)
+		t.Errorf("act:%v, except:%v", class, SummaryText)
 	}
 	if class := classificateDetectedText("Close"); class != DetailsText {
-		t.Error("act:%v, except:%v", class, SummaryText)
+		t.Errorf("act:%v, except:%v", class, SummaryText)
 	}
 	if class := classificateDetectedText("next"); class != UndefinedText {
-		t.Error("act:%v, except:%v", class, SummaryText)
+		t.Errorf("act:%v, except:%v", class, SummaryText)
 	}
 }
