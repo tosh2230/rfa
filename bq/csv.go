@@ -17,7 +17,6 @@ import (
 var RQuantity *regexp.Regexp = regexp.MustCompile(`^[0-9]+`)
 var RNumeric *regexp.Regexp = regexp.MustCompile(`\d+`)
 var RNonNumeric *regexp.Regexp = regexp.MustCompile(`\D`)
-var RNumericWithSpace *regexp.Regexp = regexp.MustCompile(`\d+\s+\d+`)
 var RDecimal *regexp.Regexp = regexp.MustCompile(`\d+\.\d+`)
 var RJapanTimeDuration *regexp.Regexp = regexp.MustCompile(`(?:\d+時間)?\d+分\d+秒`)
 var RCalorie *regexp.Regexp = regexp.MustCompile(`kcal`)
@@ -231,7 +230,7 @@ func (tweetInfo *TweetInfo) setSummary(lines []string, i int) (summary []*Summar
 
 	for i := 0; i < len(numerics); i++ {
 		v := numerics[i]
-		if RNumericWithSpace.MatchString(v) {
+		if RNonNumeric.MatchString(v) {
 			vs := RNonNumeric.Split(v, -1)
 			// filter empty string
 			n := 0
